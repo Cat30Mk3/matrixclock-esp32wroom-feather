@@ -1,0 +1,15 @@
+{
+  "name": "NTP_Manager",
+  "version": "1.0.0",
+  "description": "NTP time synchronization manager",
+  "keywords": "ntp, time, network, udp",
+  "authors": [{"name": "John Witherspoon"}],
+  "license": "MIT",
+  "platforms": "espressif32",
+  "frameworks": "arduino",
+  "dependencies": {
+    "Time": "*",
+    "globals": "*",
+    "Parola_Display": "*"
+  }
+}

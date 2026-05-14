@@ -1,39 +1,23 @@
 #pragma once
 
-#include <stddef.h>
+// Template for public repo - copy to secrets.h and fill in real credentials
+// secrets.h is git-ignored and never committed
+// The configDb_t struct is defined in globals.h
 
-// Template secrets for public builds.
-// Copy this file to include/secrets.h and replace all dummy values.
-
-typedef struct {
-  const char* ssid;
-  const char* password;
-} WifiCredential;
-
-static const WifiCredential wifi_credentials[] = {
-  {"YOUR_WIFI_1", "YOUR_PASSWORD_1"},
-  {"YOUR_WIFI_2", "YOUR_PASSWORD_2"},
-  {"YOUR_WIFI_3", "YOUR_PASSWORD_3"}
+// Dummy/template values - copy secrets_template.h to secrets.h and fill in real values
+configDb_t configDb = {
+  {"pub/Topic1", "sub/Topic1", "sub/Topic2"},  // pub / sub topics must match those sent by the MQTT devices
+  "YOUR_SSID",  // ssid
+  "YOUR_PASSWORD",  // password
+  "mail.smtp2go.com",  // smtpServer
+  "dummy@example.com",  // smtpUserId
+  "DUMMY_PASSWORD",  // smtpPassword
+  "sender@example.com",  // sendingAddress
+  "receiver@example.com",  // receivingAddress
+  "mqtt.example.com",  // mqttServer
+  "DUMMY_MQTT_USER_ID",  // mqttUserId
+  "dummyClientId",  // mqttClientId
+  "DUMMY_MQTT_PASSWORD",  // mqttPassword
+  "cmnd/Dummy_1",  // lampCmndTopic
+  "stat/Dummy_1"  // lampStatTopic
 };
-
-static constexpr size_t wifi_credentials_count =
-    sizeof(wifi_credentials) / sizeof(wifi_credentials[0]);
-
-// Future placeholders (unused by this project today).
-static const char* mqtt_user_id = "DUMMY_MQTT_USER";
-static const char* mqtt_password = "DUMMY_MQTT_PASSWORD";
-static const char* mqtt_sub_topics[] = {
-  "dummy/sub/topic"
-};
-static constexpr size_t mqtt_sub_topics_count =
-    sizeof(mqtt_sub_topics) / sizeof(mqtt_sub_topics[0]);
-
-static const char* mqtt_pub_topics[] = {
-  "dummy/pub/topic"
-};
-static constexpr size_t mqtt_pub_topics_count =
-    sizeof(mqtt_pub_topics) / sizeof(mqtt_pub_topics[0]);
-
-static const char* smtp_server = "smtp.example.com";
-static const char* smtp_user = "dummy@example.com";
-static const char* smtp_password = "DUMMY_SMTP_PASSWORD";

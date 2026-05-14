@@ -1,0 +1,15 @@
+{
+  "name": "Ticker_Manager",
+  "version": "1.0.0",
+  "description": "Ticker-based non-blocking timing and ISR management",
+  "keywords": "ticker, isr, timing, temperature",
+  "authors": [{"name": "John Witherspoon"}],
+  "license": "MIT",
+  "platforms": "espressif32",
+  "frameworks": "arduino",
+  "dependencies": {
+    "Ticker": "*",
+    "globals": "*",
+    "DS18B20_Manager": "*"
+  }
+}

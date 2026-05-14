@@ -1,0 +1,22 @@
+{
+  "name": "globals",
+  "version": "1.0.0",
+  "description": "Global variables, structures, and configurations for matrixClock",
+  "keywords": "globals, config, variables",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/user/matrixClock.git"
+  },
+  "authors": [
+    {
+      "name": "John Witherspoon"
+    }
+  ],
+  "license": "MIT",
+  "platforms": "espressif32",
+  "frameworks": "arduino",
+  "dependencies": {
+    "Timezone": "*",
+    "Time": "*"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "ISR_Handlers",
+  "version": "1.0.0",
+  "description": "Interrupt service routine handlers",
+  "keywords": "isr, interrupt, buttons",
+  "authors": [{"name": "John Witherspoon"}],
+  "license": "MIT",
+  "platforms": "espressif32",
+  "frameworks": "arduino",
+  "dependencies": {
+    "globals": "*"
+  }
+}

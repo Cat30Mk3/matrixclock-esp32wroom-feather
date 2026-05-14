@@ -1,0 +1,190 @@
+
+//28FF0B993C040014  
+
+
+
+void initializeGlobalVariables(void) {
+  //initialize displayBuffer
+  sprintf(dispBuffer[0], "%s", "");
+  sprintf(dispBuffer[1], "%s", "");
+  sprintf(dispBuffer[2], "%s", "");
+  sprintf(dispBuffer[3], "%s", "");
+}
+
+void initializeGPIOPins(void) {
+
+  pinMode(BLU_LED_PIN, OUTPUT);
+  pinMode(RED_LED_PIN, OUTPUT);
+  pinMode(YEL_LED_PIN, OUTPUT);
+  pinMode(LAMP_PIN, OUTPUT);
+
+  pinMode(PB_SEL_PIN, INPUT);
+  pinMode(PB_DEC_PIN, INPUT);
+  pinMode(PB_INC_PIN, INPUT);
+  pinMode(PB_CNL_PIN, INPUT_PULLUP);
+  pinMode(PB_MEN_PIN, INPUT_PULLUP);
+
+  digitalWrite(BLU_LED_PIN, LOW);
+  digitalWrite(RED_LED_PIN, LOW);
+  digitalWrite(YEL_LED_PIN, LOW);
+
+  digitalWrite(LAMP_PIN, LOW);
+
+  //  attachInterrupt(digitalPinToInterrupt(PB_SEL_PIN), pbSelFallIsr, FALLING);
+  //  attachInterrupt(digitalPinToInterrupt(PB_DEC_PIN), pbDecFallIsr, FALLING);
+  //  attachInterrupt(digitalPinToInterrupt(PB_INC_PIN), pbIncFallIsr, FALLING);
+  //  attachInterrupt(digitalPinToInterrupt(PB_CNL_PIN), pbCnlFallIsr, FALLING);
+  //  attachInterrupt(digitalPinToInterrupt(PB_MEN_PIN), pbMenFallIsr, FALLING);
+}
+
+void initializeDispParam(void) {
+
+  // mqttDeviceName values are now initialized in secrets.h / secrets_template.h
+  // No need to strcpy them at runtime
+
+  dispParam[DISP_CURR_TIME].enabled               = true;
+  dispParam[DISP_CURR_DOW].enabled                = true;
+  dispParam[DISP_CURR_DATE].enabled               = false;
+  dispParam[DISP_CURR_WIRED_TEMP_IN].enabled      = false;
+  dispParam[DISP_CURR_WIRED_TEMP_OUT].enabled     = false;
+  dispParam[DISP_CURR_MQTT_COT_TEMP_IN].enabled   = true;
+  dispParam[DISP_CURR_MQTT_COT_TEMP_OUT].enabled  = true;
+  dispParam[DISP_CURR_MQTT_COT_TEMP_CRL].enabled  = true;
+  dispParam[DISP_CURR_MQTT_COT_TEMP_SMP].enabled  = true;
+  dispParam[DISP_CURR_MQTT_COT_MSG].enabled       = true;
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_IN].enabled   = true;
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_OUT].enabled  = true;
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_ATT].enabled  = true;
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_CAV].enabled  = true;
+  dispParam[DISP_CURR_MQTT_HOM_MSG].enabled       = true;
+
+  dispParam[DISP_CURR_TIME].source               = 0;   //internal
+  dispParam[DISP_CURR_DOW].source                = 0;   //internal
+  dispParam[DISP_CURR_DATE].source               = 0;   //internal
+  dispParam[DISP_CURR_WIRED_TEMP_IN].source      = 0;   //internal
+  dispParam[DISP_CURR_WIRED_TEMP_OUT].source     = 0;   //internal
+  dispParam[DISP_CURR_MQTT_COT_TEMP_IN].source   = 1;   //mqtt
+  dispParam[DISP_CURR_MQTT_COT_TEMP_OUT].source  = 1;   //mqtt
+  dispParam[DISP_CURR_MQTT_COT_TEMP_CRL].source  = 1;   //mqtt
+  dispParam[DISP_CURR_MQTT_COT_TEMP_SMP].source  = 1;   //mqtt
+  dispParam[DISP_CURR_MQTT_COT_MSG].source       = 1;   //mqtt
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_IN].source   = 2;   //mqtt
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_OUT].source  = 2;   //mqtt
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_ATT].source  = 2;   //mqtt
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_CAV].source  = 2;   //mqtt
+  dispParam[DISP_CURR_MQTT_HOM_MSG].source       = 2;   //mqtt
+  
+#if DISPLAY_CONFIG == DISPLAY1X4
+
+  dispParam[DISP_CURR_TIME].enabled               = true;
+  dispParam[DISP_CURR_DOW].enabled                = true;
+  dispParam[DISP_CURR_DATE].enabled               = false;
+  dispParam[DISP_CURR_WIRED_TEMP_IN].enabled      = true;
+  dispParam[DISP_CURR_WIRED_TEMP_OUT].enabled     = true;
+  
+  dispParam[DISP_CURR_MQTT_COT_TEMP_IN].enabled   = false;
+  dispParam[DISP_CURR_MQTT_COT_TEMP_OUT].enabled  = true;
+  dispParam[DISP_CURR_MQTT_COT_TEMP_CRL].enabled  = false;
+  dispParam[DISP_CURR_MQTT_COT_TEMP_SMP].enabled  = false;
+  dispParam[DISP_CURR_MQTT_COT_MSG].enabled       = true;
+  
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_IN].enabled   = false;
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_OUT].enabled  = true;
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_ATT].enabled  = false;
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_CAV].enabled  = false;
+  dispParam[DISP_CURR_MQTT_HOM_MSG].enabled       = true;
+  
+  dispParam[DISP_CURR_TIME].groupMode               = 0;   //single
+  dispParam[DISP_CURR_DOW].groupMode                = 0;   //single
+  dispParam[DISP_CURR_DATE].groupMode               = 0;   //single
+  dispParam[DISP_CURR_WIRED_TEMP_IN].groupMode      = 0;   //quad1
+  dispParam[DISP_CURR_WIRED_TEMP_OUT].groupMode     = 0;   //quad1
+  dispParam[DISP_CURR_MQTT_COT_TEMP_IN].groupMode   = 0;   //quad2
+  dispParam[DISP_CURR_MQTT_COT_TEMP_OUT].groupMode  = 0;   //quad2
+  dispParam[DISP_CURR_MQTT_COT_TEMP_CRL].groupMode  = 0;   //quad2
+  dispParam[DISP_CURR_MQTT_COT_TEMP_SMP].groupMode  = 0;   //quad2
+  dispParam[DISP_CURR_MQTT_COT_MSG].groupMode       = 0;   //single
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_IN].groupMode   = 0;   //quad2
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_OUT].groupMode  = 0;   //quad2
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_ATT].groupMode  = 0;   //quad2
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_CAV].groupMode  = 0;   //quad2
+  dispParam[DISP_CURR_MQTT_HOM_MSG].groupMode       = 0;   //single
+
+#elif DISPLAY_CONFIG == DISPLAY2X8
+
+  dispParam[DISP_CURR_TIME].enabled               = true;
+  dispParam[DISP_CURR_DOW].enabled                = true;
+  dispParam[DISP_CURR_DATE].enabled               = false;
+  dispParam[DISP_CURR_WIRED_TEMP_IN].enabled      = true;
+  dispParam[DISP_CURR_WIRED_TEMP_OUT].enabled     = true;
+  dispParam[DISP_CURR_MQTT_COT_TEMP_IN].enabled   = true;
+  dispParam[DISP_CURR_MQTT_COT_TEMP_OUT].enabled  = true;
+  dispParam[DISP_CURR_MQTT_COT_TEMP_CRL].enabled  = true;
+  dispParam[DISP_CURR_MQTT_COT_TEMP_SMP].enabled  = true;
+  dispParam[DISP_CURR_MQTT_COT_MSG].enabled       = true;
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_IN].enabled   = true;
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_OUT].enabled  = true;
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_ATT].enabled  = true;
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_CAV].enabled  = true;
+  dispParam[DISP_CURR_MQTT_HOM_MSG].enabled       = true;
+  
+  dispParam[DISP_CURR_TIME].groupMode               = 0;   //single
+  dispParam[DISP_CURR_DOW].groupMode                = 0;   //single
+  dispParam[DISP_CURR_DATE].groupMode               = 0;   //single
+  dispParam[DISP_CURR_WIRED_TEMP_IN].groupMode      = 1;   //quad1
+  dispParam[DISP_CURR_WIRED_TEMP_OUT].groupMode     = 1;   //quad1
+  dispParam[DISP_CURR_MQTT_COT_TEMP_IN].groupMode   = 2;   //quad2
+  dispParam[DISP_CURR_MQTT_COT_TEMP_OUT].groupMode  = 2;   //quad2
+  dispParam[DISP_CURR_MQTT_COT_TEMP_CRL].groupMode  = 2;   //quad2
+  dispParam[DISP_CURR_MQTT_COT_TEMP_SMP].groupMode  = 2;   //quad2
+  dispParam[DISP_CURR_MQTT_COT_MSG].groupMode       = 0;   //single
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_IN].groupMode   = 3;   //quad2
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_OUT].groupMode  = 3;   //quad2
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_ATT].groupMode  = 3;   //quad2
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_CAV].groupMode  = 3;   //quad2
+  dispParam[DISP_CURR_MQTT_HOM_MSG].groupMode       = 0;   //single
+
+#endif
+
+  
+  dispParam[DISP_CURR_TIME].remoteMqttDeviceIndex               = 0;
+  dispParam[DISP_CURR_DOW].remoteMqttDeviceIndex                = 0;
+  dispParam[DISP_CURR_DATE].remoteMqttDeviceIndex               = 0;
+  dispParam[DISP_CURR_WIRED_TEMP_IN].remoteMqttDeviceIndex      = 0;
+  dispParam[DISP_CURR_WIRED_TEMP_OUT].remoteMqttDeviceIndex     = 0;
+  dispParam[DISP_CURR_MQTT_COT_TEMP_IN].remoteMqttDeviceIndex   = 1;
+  dispParam[DISP_CURR_MQTT_COT_TEMP_OUT].remoteMqttDeviceIndex  = 1;
+  dispParam[DISP_CURR_MQTT_COT_TEMP_CRL].remoteMqttDeviceIndex  = 1;
+  dispParam[DISP_CURR_MQTT_COT_TEMP_SMP].remoteMqttDeviceIndex  = 1;
+  dispParam[DISP_CURR_MQTT_COT_MSG].remoteMqttDeviceIndex       = 1;
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_IN].remoteMqttDeviceIndex   = 2;
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_OUT].remoteMqttDeviceIndex  = 2;
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_ATT].remoteMqttDeviceIndex  = 2;
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_CAV].remoteMqttDeviceIndex  = 2;
+  dispParam[DISP_CURR_MQTT_HOM_MSG].remoteMqttDeviceIndex       = 2;
+
+
+  // caution: CASE sensitive! must match sent topic case
+  strcpy(dispParam[DISP_CURR_MQTT_COT_TEMP_IN].mqttTopic,  "INSIDE");
+  strcpy(dispParam[DISP_CURR_MQTT_COT_TEMP_OUT].mqttTopic, "OUTSIDE");
+  strcpy(dispParam[DISP_CURR_MQTT_COT_TEMP_CRL].mqttTopic, "DRYPIT");
+  strcpy(dispParam[DISP_CURR_MQTT_COT_TEMP_SMP].mqttTopic, "WETPIT");
+  strcpy(dispParam[DISP_CURR_MQTT_COT_MSG].mqttTopic,      "msg");
+  strcpy(dispParam[DISP_CURR_MQTT_HOM_TEMP_IN].mqttTopic,  "COMPUTER"); 
+  strcpy(dispParam[DISP_CURR_MQTT_HOM_TEMP_OUT].mqttTopic, "OUTSIDE");
+  strcpy(dispParam[DISP_CURR_MQTT_HOM_TEMP_ATT].mqttTopic, "ATTIC");
+  strcpy(dispParam[DISP_CURR_MQTT_HOM_TEMP_CAV].mqttTopic, "CAVITY");
+  strcpy(dispParam[DISP_CURR_MQTT_HOM_MSG].mqttTopic,      "msg");
+
+  dispParam[DISP_CURR_WIRED_TEMP_IN].symbolIndex      = 10;
+  dispParam[DISP_CURR_WIRED_TEMP_OUT].symbolIndex     = 11;
+  dispParam[DISP_CURR_MQTT_COT_TEMP_IN].symbolIndex   = 12;
+  dispParam[DISP_CURR_MQTT_COT_TEMP_OUT].symbolIndex  = 13;
+  dispParam[DISP_CURR_MQTT_COT_TEMP_CRL].symbolIndex  = 14;
+  dispParam[DISP_CURR_MQTT_COT_TEMP_SMP].symbolIndex  = 15;
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_IN].symbolIndex   = 16;
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_OUT].symbolIndex  = 17;
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_ATT].symbolIndex  = 18;
+  dispParam[DISP_CURR_MQTT_HOM_TEMP_CAV].symbolIndex  = 19;
+
+}

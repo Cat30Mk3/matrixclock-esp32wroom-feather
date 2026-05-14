@@ -1,0 +1,19 @@
+{
+  "name": "Parola_Display",
+  "version": "1.0.0",
+  "description": "Parola display manager library for matrixClock",
+  "keywords": "parola, display, matrix, MD_MAX72XX",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/user/matrixClock.git"
+  },
+  "authors": [{"name": "John Witherspoon"}],
+  "license": "MIT",
+  "platforms": "espressif32",
+  "frameworks": "arduino",
+  "dependencies": {
+    "MD_Parola": "*",
+    "MD_MAX72XX": "*",
+    "globals": "*"
+  }
+}

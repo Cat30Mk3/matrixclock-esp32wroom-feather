@@ -1,0 +1,16 @@
+{
+  "name": "Time_Manager",
+  "version": "1.0.0",
+  "description": "Time management and formatting for matrixClock",
+  "keywords": "time, rtc, timezone",
+  "authors": [{"name": "John Witherspoon"}],
+  "license": "MIT",
+  "platforms": "espressif32",
+  "frameworks": "arduino",
+  "dependencies": {
+    "Time": "*",
+    "Timezone": "*",
+    "RTClib": "*",
+    "globals": "*"
+  }
+}

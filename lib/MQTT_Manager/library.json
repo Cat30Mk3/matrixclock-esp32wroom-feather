@@ -1,0 +1,15 @@
+{
+  "name": "MQTT_Manager",
+  "version": "1.0.0",
+  "description": "MQTT connection and messaging manager",
+  "keywords": "mqtt, pubsub, network",
+  "authors": [{"name": "John Witherspoon"}],
+  "license": "MIT",
+  "platforms": "espressif32",
+  "frameworks": "arduino",
+  "dependencies": {
+    "PubSubClient": "*",
+    "globals": "*",
+    "Parola_Display": "*"
+  }
+}
