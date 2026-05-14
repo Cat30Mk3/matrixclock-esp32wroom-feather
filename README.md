@@ -79,7 +79,7 @@ Configure in `lib/globals/src/globals.h`:
 ### Hardware Pins
 All GPIO pins are defined in `lib/globals/src/globals.h`.
 
-### <u>Secrets WiFi  and MQTT Credentials</u>
+## <u>Secrets WiFi  and MQTT Credentials</u>
 This project supports a public-safe secrets pattern:
 
 - `include/secrets_template.h` is committed and contains dummy values.
@@ -93,7 +93,8 @@ Build behavior:
 First-time local setup
 
 - Copy `include/secrets_template.h` to `include/secrets.h`.
-- Replace WiFi entries with your real credentials.
+- Replace WiFi and MQTT entries with your real credentials and pub/sub topics.
+- note SMTP has not been implemented
 - Keep `include/secrets.h` local only (already ignored by `.gitignore`).
 
 ## Building & Uploading
