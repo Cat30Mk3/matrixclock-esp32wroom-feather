@@ -27,7 +27,9 @@ This is a PlatformIO-compatible version of the matrixClock project, migrated fro
 ├── src/
 │   └── main.cpp                 # Main application entry point (setup & loop)
 ├── include/
-│   └── Font_Data.h              # LED display font definitions
+│   ├── Font_Data.h              # LED display font definitions
+│   ├── secrets_template.h       # Template for local secrets configuration
+│   └── secrets.h                # Local secrets (gitignored)
 ├── lib/
 │   ├── globals/                 # Shared globals, configs, and data structures
 │   ├── Parola_Display/          # LED display management (MD_Parola wrapper)
