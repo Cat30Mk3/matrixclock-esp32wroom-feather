@@ -1,0 +1,10 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../matrixClock-esp32wroom-feather-private"
+		}
+	]
+}
