@@ -29,7 +29,6 @@ ICACHE_RAM_ATTR void resetDisplayISR(void) {
 
 ICACHE_RAM_ATTR void tickerNonBlockingTempStartISR(void) {
   sensors.requestTemperatures();
-  parola.displayAnimate();
   tickerTempGetInstance.once_ms(2000, tickerNonBlockingTempGetISR);
 }
 
@@ -41,7 +40,6 @@ ICACHE_RAM_ATTR void tickerNonBlockingTempGetISR(void) {
     for (int index = 0; index < ds18b20Count; index++) {
       tempDegCFlt = sensors.getTempC(ds18b20Address[index]);
       tempDegCFlt = sensors.getTempC(ds18b20Address[index]);
-      parola.displayAnimate();
 
       if (tempDegCFlt > -60) {
         dtostrf(tempDegCFlt, -4, 1, tempDegCStr[index]);
