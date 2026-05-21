@@ -12,6 +12,7 @@
   "platforms": "espressif32",
   "frameworks": "arduino",
   "dependencies": {
-    "AP_Config_Portal": "*"
+    "AP_Config_Portal": "*",
+    "globals": "*"
   }
 }
