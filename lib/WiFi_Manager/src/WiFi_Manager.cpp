@@ -4,6 +4,11 @@
 #include "Ticker_Manager.h"
 
 namespace {
+const uint32_t kInitialStaSettleDelayMs = 1500;
+const int kPerAttemptWaitSteps = 16;
+const uint32_t kPerStepDelayMs = 750;
+const uint32_t kInterAttemptBackoffMs = 500;
+
 const char *wifiStatusToString(wl_status_t status) {
   switch (status) {
     case WL_IDLE_STATUS:
@@ -31,13 +36,14 @@ bool newWiFiConnect(boolean force) {
     digitalWrite(BLU_LED_PIN, LOW);
     WiFi.persistent(false);
     WiFi.setSleep(false);
+    WiFi.mode(WIFI_STA);
+    nonBlockingDelay(kInitialStaSettleDelayMs);
 
     for (int i = 1; i <= 6; i++) {
       Serial.print("[newWiFiConnect] wifi not connected - attempt #");
       Serial.println(i);
       WiFi.disconnect(true, true);
       nonBlockingDelay(250);
-      WiFi.mode(WIFI_STA);
       WiFi.setHostname("matrixClock");
 
       if (force) {
@@ -52,8 +58,8 @@ bool newWiFiConnect(boolean force) {
       }
 
       int lastStatus = -999;
-      for (int waitStep = 0; waitStep < 24; waitStep++) {
-        nonBlockingDelay(500);
+      for (int waitStep = 0; waitStep < kPerAttemptWaitSteps; waitStep++) {
+        nonBlockingDelay(kPerStepDelayMs);
         wl_status_t status = WiFi.status();
 
         if ((int)status != lastStatus) {
@@ -88,6 +94,8 @@ bool newWiFiConnect(boolean force) {
       Serial.print(" (");
       Serial.print(wifiStatusToString(WiFi.status()));
       Serial.println(")");
+
+      nonBlockingDelay(kInterAttemptBackoffMs);
     }
 
     Serial.println("[newWiFiMqttConnect] wifi failed to connect");
