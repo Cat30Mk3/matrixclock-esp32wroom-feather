@@ -10,6 +10,54 @@ const char *kConfigBlobKey = "cfgblob";
 void applyRuntimeConfigToLegacyGlobals(const MatrixClockRuntimeConfig &runtimeConfig) {
   configDb = runtimeConfig.configDb;
 }
+
+bool portalLoadConfig(void *context) {
+  (void)context;
+  MatrixClockConfigInitResult result = {false, false};
+  return matrixClockConfigInitializeRuntimeConfig(result);
+}
+
+bool portalSaveConfig(void *context) {
+  (void)context;
+  return matrixClockConfigPersistActiveRuntimeConfig();
+}
+
+bool portalApplyConfig(void *context) {
+  (void)context;
+  applyRuntimeConfigToLegacyGlobals(g_matrixClockRuntimeConfig);
+  return true;
+}
+
+bool portalGetStatus(void *context, APPortalStatus &status) {
+  (void)context;
+  status.apModeActive = false;
+  status.stationConnected = (WiFi.status() == WL_CONNECTED);
+  status.mqttConnected = mqttClient.connected();
+  status.timeValid = (timeStatus() != timeNotSet);
+  status.timeSourceMode = "RTC_OR_NTP";
+  return true;
+}
+
+const APFieldDefinition kPortalFields[] = {
+  {"wifi", "wifi_enabled", "WiFi Enabled", AP_FIELD_TOGGLE, 1, true, nullptr, 0},
+  {"wifi", "wifi_ssid_1", "WiFi SSID #1", AP_FIELD_TEXT, 29, false, nullptr, 0},
+  {"wifi", "wifi_password_1", "WiFi Password #1", AP_FIELD_PASSWORD, 29, false, nullptr, 0},
+  {"wifi", "wifi_ssid_2", "WiFi SSID #2", AP_FIELD_TEXT, 29, false, nullptr, 0},
+  {"wifi", "wifi_password_2", "WiFi Password #2", AP_FIELD_PASSWORD, 29, false, nullptr, 0},
+  {"wifi", "wifi_ssid_3", "WiFi SSID #3", AP_FIELD_TEXT, 29, false, nullptr, 0},
+  {"wifi", "wifi_password_3", "WiFi Password #3", AP_FIELD_PASSWORD, 29, false, nullptr, 0},
+
+  {"mqtt", "mqtt_enabled", "MQTT Enabled", AP_FIELD_TOGGLE, 1, true, nullptr, 0},
+  {"mqtt", "mqtt_server", "MQTT Server", AP_FIELD_TEXT, 34, false, nullptr, 0},
+  {"mqtt", "mqtt_user", "MQTT User", AP_FIELD_TEXT, 99, false, nullptr, 0},
+  {"mqtt", "mqtt_password", "MQTT Password", AP_FIELD_PASSWORD, 34, false, nullptr, 0},
+  {"mqtt", "mqtt_client_id", "MQTT Client ID", AP_FIELD_TEXT, 34, false, nullptr, 0},
+  {"mqtt", "mqtt_device_name_1", "MQTT Device Name #1", AP_FIELD_TEXT, 39, false, nullptr, 0},
+  {"mqtt", "mqtt_device_name_2", "MQTT Device Name #2", AP_FIELD_TEXT, 39, false, nullptr, 0},
+  {"mqtt", "mqtt_device_name_3", "MQTT Device Name #3", AP_FIELD_TEXT, 39, false, nullptr, 0},
+  {"mqtt", "mqtt_topic_cmd", "Lamp Command Topic", AP_FIELD_TEXT, 19, false, nullptr, 0},
+  {"mqtt", "mqtt_topic_stat", "Lamp Status Topic", AP_FIELD_TEXT, 19, false, nullptr, 0}
+};
 }
 
 MatrixClockRuntimeConfig g_matrixClockRuntimeConfig = {
@@ -18,7 +66,21 @@ MatrixClockRuntimeConfig g_matrixClockRuntimeConfig = {
 };
 
 void matrixClockConfigRegisterPortalContracts() {
-  // Phase 0 contract stub only: page/field registration and callbacks are defined later.
+  apPortalRegisterPage("wifi", "WiFi Settings");
+  apPortalRegisterPage("mqtt", "MQTT Settings");
+
+  for (size_t i = 0; i < (sizeof(kPortalFields) / sizeof(kPortalFields[0])); ++i) {
+    apPortalRegisterField(kPortalFields[i]);
+  }
+
+  APPortalCallbacks callbacks = {
+    nullptr,
+    portalLoadConfig,
+    portalSaveConfig,
+    portalApplyConfig,
+    portalGetStatus
+  };
+  apPortalSetCallbacks(callbacks);
 }
 
 bool matrixClockConfigLoadFromNvs(MatrixClockRuntimeConfig &outConfig) {
