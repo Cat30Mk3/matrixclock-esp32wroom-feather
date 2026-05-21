@@ -1,0 +1,17 @@
+{
+  "name": "Mode_Manager",
+  "version": "0.1.0",
+  "description": "Runtime mode state machine and AP/recovery entry control for matrixClock",
+  "keywords": "mode, state-machine, ap, recovery",
+  "authors": [
+    {
+      "name": "John Witherspoon"
+    }
+  ],
+  "license": "MIT",
+  "platforms": "espressif32",
+  "frameworks": "arduino",
+  "dependencies": {
+    "globals": "*"
+  }
+}

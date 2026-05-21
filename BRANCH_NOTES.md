@@ -92,3 +92,27 @@ Post-build upload and runtime smoke test on bench hardware:
 - MQTT messages received and displayed.
 - RTC initialized and running.
 - No errors observed during this validation run.
+
+## Phase 2 Progress Checkpoint (May 21, 2026)
+
+Implemented in code:
+
+- Added explicit runtime mode state machine with modes: NORMAL, AP_SETUP, RECOVERY.
+- Added guarded runtime AP entry sequence: hold Menu for 4s, then Select within 5s confirm window.
+- Added boot recovery combo detection window for Menu + Select hold during early boot.
+- Added mode transition serial logging and display prompts for AP_SETUP and RECOVERY entry.
+- Added mode gate that bypasses normal network startup when AP/Recovery mode is active.
+- Updated status adapter to report AP mode activity from runtime mode manager.
+
+Current Phase 2 scope note:
+
+- AP server lifecycle is still Phase 3 work; Phase 2 currently performs deterministic mode entry/control and startup bypass behavior only.
+
+Files added/updated for this checkpoint:
+
+- lib/Mode_Manager/library.json
+- lib/Mode_Manager/src/Mode_Manager.h
+- lib/Mode_Manager/src/Mode_Manager.cpp
+- src/main.cpp
+- lib/MatrixClock_Config/src/MatrixClock_Config.cpp
+- lib/MatrixClock_Config/library.json

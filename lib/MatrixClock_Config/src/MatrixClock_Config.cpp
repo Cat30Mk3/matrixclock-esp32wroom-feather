@@ -1,5 +1,6 @@
 #include "MatrixClock_Config.h"
 #include "AP_Config_Portal.h"
+#include "Mode_Manager.h"
 #include <Preferences.h>
 
 namespace {
@@ -65,7 +66,7 @@ bool portalApplyConfig(void *context) {
 
 bool portalGetStatus(void *context, APPortalStatus &status) {
   (void)context;
-  status.apModeActive = false;
+  status.apModeActive = modeManagerInApControlMode();
   status.stationConnected = (WiFi.status() == WL_CONNECTED);
   status.mqttConnected = mqttClient.connected();
   status.timeValid = (timeStatus() != timeNotSet);
