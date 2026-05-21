@@ -6,6 +6,10 @@ namespace {
 const char *kConfigNamespace = "mcfg";
 const char *kSchemaKey = "schema";
 const char *kConfigBlobKey = "cfgblob";
+
+void applyRuntimeConfigToLegacyGlobals(const MatrixClockRuntimeConfig &runtimeConfig) {
+  configDb = runtimeConfig.configDb;
+}
 }
 
 MatrixClockRuntimeConfig g_matrixClockRuntimeConfig = {
@@ -75,4 +79,20 @@ bool matrixClockConfigIsSchemaCompatible(uint16_t storedVersion) {
 void matrixClockConfigLoadBootstrapDefaults(MatrixClockRuntimeConfig &outConfig) {
   outConfig.schemaVersion = MATRIXCLOCK_CONFIG_SCHEMA_VERSION;
   outConfig.configDb = configDb;
+}
+
+bool matrixClockConfigInitializeRuntimeConfig(MatrixClockConfigInitResult &outResult) {
+  outResult.loadedFromNvs = false;
+  outResult.seededNvsFromBootstrap = false;
+
+  if (matrixClockConfigLoadFromNvs(g_matrixClockRuntimeConfig)) {
+    outResult.loadedFromNvs = true;
+    applyRuntimeConfigToLegacyGlobals(g_matrixClockRuntimeConfig);
+    return true;
+  }
+
+  matrixClockConfigLoadBootstrapDefaults(g_matrixClockRuntimeConfig);
+  applyRuntimeConfigToLegacyGlobals(g_matrixClockRuntimeConfig);
+  outResult.seededNvsFromBootstrap = matrixClockConfigSaveToNvs(g_matrixClockRuntimeConfig);
+  return true;
 }

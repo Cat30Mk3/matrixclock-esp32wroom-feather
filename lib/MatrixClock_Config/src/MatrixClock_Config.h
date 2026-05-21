@@ -11,6 +11,11 @@ struct MatrixClockRuntimeConfig {
 	configDb_t configDb;
 };
 
+struct MatrixClockConfigInitResult {
+	bool loadedFromNvs;
+	bool seededNvsFromBootstrap;
+};
+
 extern MatrixClockRuntimeConfig g_matrixClockRuntimeConfig;
 
 void matrixClockConfigRegisterPortalContracts();
@@ -19,5 +24,6 @@ bool matrixClockConfigLoadFromNvs(MatrixClockRuntimeConfig &outConfig);
 bool matrixClockConfigSaveToNvs(const MatrixClockRuntimeConfig &config);
 bool matrixClockConfigIsSchemaCompatible(uint16_t storedVersion);
 void matrixClockConfigLoadBootstrapDefaults(MatrixClockRuntimeConfig &outConfig);
+bool matrixClockConfigInitializeRuntimeConfig(MatrixClockConfigInitResult &outResult);
 
 #endif // MATRIXCLOCK_CONFIG_H
