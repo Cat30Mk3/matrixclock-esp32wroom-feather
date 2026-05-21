@@ -18,7 +18,7 @@ struct MatrixClockConfigInitResult {
 
 extern MatrixClockRuntimeConfig g_matrixClockRuntimeConfig;
 
-void matrixClockConfigRegisterPortalContracts();
+bool matrixClockConfigRegisterPortalContracts();
 
 bool matrixClockConfigLoadFromNvs(MatrixClockRuntimeConfig &outConfig);
 bool matrixClockConfigSaveToNvs(const MatrixClockRuntimeConfig &config);

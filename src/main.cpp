@@ -135,6 +135,15 @@ void setup()
     Serial.println("[CONFIG] WARNING: Runtime config initialization reported failure");
   }
 
+  if (matrixClockConfigRegisterPortalContracts())
+  {
+    Serial.println("[CONFIG] AP portal schema registration OK");
+  }
+  else
+  {
+    Serial.println("[CONFIG] WARNING: AP portal schema registration failed");
+  }
+
   // Scan I2C bus for devices
   Serial.println("\nScanning I2C bus for devices...");
   Wire.begin();

@@ -65,12 +65,14 @@ MatrixClockRuntimeConfig g_matrixClockRuntimeConfig = {
   {}
 };
 
-void matrixClockConfigRegisterPortalContracts() {
-  apPortalRegisterPage("wifi", "WiFi Settings");
-  apPortalRegisterPage("mqtt", "MQTT Settings");
+bool matrixClockConfigRegisterPortalContracts() {
+  bool ok = true;
+
+  ok = apPortalRegisterPage("wifi", "WiFi Settings") && ok;
+  ok = apPortalRegisterPage("mqtt", "MQTT Settings") && ok;
 
   for (size_t i = 0; i < (sizeof(kPortalFields) / sizeof(kPortalFields[0])); ++i) {
-    apPortalRegisterField(kPortalFields[i]);
+    ok = apPortalRegisterField(kPortalFields[i]) && ok;
   }
 
   APPortalCallbacks callbacks = {
@@ -81,6 +83,8 @@ void matrixClockConfigRegisterPortalContracts() {
     portalGetStatus
   };
   apPortalSetCallbacks(callbacks);
+
+  return ok;
 }
 
 bool matrixClockConfigLoadFromNvs(MatrixClockRuntimeConfig &outConfig) {
