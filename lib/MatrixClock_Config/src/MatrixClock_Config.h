@@ -26,4 +26,8 @@ bool matrixClockConfigIsSchemaCompatible(uint16_t storedVersion);
 void matrixClockConfigLoadBootstrapDefaults(MatrixClockRuntimeConfig &outConfig);
 bool matrixClockConfigInitializeRuntimeConfig(MatrixClockConfigInitResult &outResult);
 
+const MatrixClockRuntimeConfig &matrixClockConfigGetActiveRuntimeConfig();
+void matrixClockConfigSetActiveRuntimeConfig(const MatrixClockRuntimeConfig &runtimeConfig);
+bool matrixClockConfigPersistActiveRuntimeConfig();
+
 #endif // MATRIXCLOCK_CONFIG_H

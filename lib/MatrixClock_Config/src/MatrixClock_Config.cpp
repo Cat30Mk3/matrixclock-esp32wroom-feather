@@ -96,3 +96,16 @@ bool matrixClockConfigInitializeRuntimeConfig(MatrixClockConfigInitResult &outRe
   outResult.seededNvsFromBootstrap = matrixClockConfigSaveToNvs(g_matrixClockRuntimeConfig);
   return true;
 }
+
+const MatrixClockRuntimeConfig &matrixClockConfigGetActiveRuntimeConfig() {
+  return g_matrixClockRuntimeConfig;
+}
+
+void matrixClockConfigSetActiveRuntimeConfig(const MatrixClockRuntimeConfig &runtimeConfig) {
+  g_matrixClockRuntimeConfig = runtimeConfig;
+  applyRuntimeConfigToLegacyGlobals(g_matrixClockRuntimeConfig);
+}
+
+bool matrixClockConfigPersistActiveRuntimeConfig() {
+  return matrixClockConfigSaveToNvs(g_matrixClockRuntimeConfig);
+}
