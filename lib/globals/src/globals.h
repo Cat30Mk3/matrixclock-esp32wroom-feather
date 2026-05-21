@@ -38,7 +38,7 @@ extern configDb_t configDb;
 // ============================================================================
 #define DISPLAY1X4 0
 #define DISPLAY2X8 1
-#define DISPLAY_CONFIG DISPLAY2X8  // <<< SELECT DISPLAY CONFIGURATION
+#define DISPLAY_CONFIG DISPLAY1X4  // <<< SELECT DISPLAY CONFIGURATION
 
 #define SWAP_DS18B20 1              // 0 for no swap, 1 for swap
 #define ONE_TEMP_IS_IN 1            // 0 for "ONE_TEMP_IS_OUT", 1 for "ONE_TEMP_IS_IN"
