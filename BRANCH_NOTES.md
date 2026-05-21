@@ -53,3 +53,42 @@ Files touched for this checkpoint:
 - lib/MatrixClock_Config/src/MatrixClock_Config.h
 - lib/MatrixClock_Config/src/MatrixClock_Config.cpp
 - src/main.cpp
+
+## Phase 2 Kickoff Checklist (Mode and Entry Control)
+
+Implementation checklist:
+
+- Define explicit runtime mode state machine: Normal, AP Setup, Recovery.
+- Add mode transition guards to prevent accidental AP entry.
+- Implement Menu-hold timing window (4 seconds) with Select confirm window.
+- Ensure button handling is ignored for config navigation while in AP mode.
+- Implement forced recovery entry on boot combo (Menu + Select held through early boot).
+- Ensure Reset-alone path remains a normal reboot with no mode override.
+- Add clear serial log markers for each mode transition and trigger source.
+- Add display/status indication hooks for AP entry and exit events.
+
+Test checklist (roadmap checkpoint):
+
+- No accidental AP entry during random button use.
+- Deterministic AP entry when Menu hold + Select confirm is performed.
+- Deterministic recovery AP entry with boot combo + Reset sequence.
+- Reset alone does not alter mode unexpectedly.
+- Exiting AP mode returns to normal runtime behavior cleanly.
+
+Suggested code touch points:
+
+- src/main.cpp (boot flow + mode bootstrap)
+- lib/ISR_Handlers/src/ISR_Handlers.cpp and .h (button event capture)
+- lib/Ticker_Manager/src/Ticker_Manager.cpp and .h (timing windows/debounce support)
+- New small mode controller module if needed to avoid main.cpp sprawl
+
+## Hardware Validation Snapshot (May 21, 2026)
+
+Post-build upload and runtime smoke test on bench hardware:
+
+- Firmware uploaded successfully.
+- Clock setup completed and running correctly.
+- WiFi connected on first attempt.
+- MQTT messages received and displayed.
+- RTC initialized and running.
+- No errors observed during this validation run.
