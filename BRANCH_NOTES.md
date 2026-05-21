@@ -30,3 +30,26 @@ Current branch test configuration includes:
 
 - DISPLAY_CONFIG set to DISPLAY1X4 in lib/globals/src/globals.h
 - platformio.ini upload/monitor port set to COM8 for local bench hardware
+
+## Phase 1 Completion Checkpoint (May 21, 2026)
+
+Phase 1 objectives from product spec roadmap are implemented and validated:
+
+- Runtime config persistence and schema versioning are implemented in MatrixClock_Config.
+- NVS validity checks are enforced (schema match + full blob length) before load.
+- Fallback chain behavior is in place: valid NVS first, otherwise bootstrap defaults from secrets source.
+- First-load bootstrap seeding writes runtime config to NVS after fallback.
+- AP portal field schema registration now performs duplicate and structural validation.
+- Adapter field-to-config mapping self-check runs during setup and logs pass/fail.
+
+Validation evidence:
+
+- Build command: python -m platformio run -e featheresp32
+- Result: SUCCESS (firmware linked and binary generated)
+
+Files touched for this checkpoint:
+
+- lib/AP_Config_Portal/src/AP_Config_Portal.cpp
+- lib/MatrixClock_Config/src/MatrixClock_Config.h
+- lib/MatrixClock_Config/src/MatrixClock_Config.cpp
+- src/main.cpp

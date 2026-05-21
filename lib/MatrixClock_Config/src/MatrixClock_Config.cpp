@@ -6,6 +6,25 @@ namespace {
 const char *kConfigNamespace = "mcfg";
 const char *kSchemaKey = "schema";
 const char *kConfigBlobKey = "cfgblob";
+const char *kMappedFieldIds[] = {
+  "wifi_enabled",
+  "wifi_ssid_1",
+  "wifi_password_1",
+  "wifi_ssid_2",
+  "wifi_password_2",
+  "wifi_ssid_3",
+  "wifi_password_3",
+  "mqtt_enabled",
+  "mqtt_server",
+  "mqtt_user",
+  "mqtt_password",
+  "mqtt_client_id",
+  "mqtt_device_name_1",
+  "mqtt_device_name_2",
+  "mqtt_device_name_3",
+  "mqtt_topic_cmd",
+  "mqtt_topic_stat"
+};
 
 bool copyToOutputBuffer(const char *source, char *outValue, size_t outValueLen) {
   if (outValue == nullptr || outValueLen == 0) {
@@ -292,5 +311,22 @@ bool matrixClockConfigSetFieldValue(const char *fieldId, const char *value) {
   }
 
   applyRuntimeConfigToLegacyGlobals(g_matrixClockRuntimeConfig);
+  return true;
+}
+
+bool matrixClockConfigValidatePortalFieldMappings() {
+  char valueBuffer[128];
+
+  for (size_t i = 0; i < (sizeof(kMappedFieldIds) / sizeof(kMappedFieldIds[0])); ++i) {
+    const char *fieldId = kMappedFieldIds[i];
+    if (!matrixClockConfigGetFieldValue(fieldId, valueBuffer, sizeof(valueBuffer))) {
+      return false;
+    }
+
+    if (!matrixClockConfigSetFieldValue(fieldId, valueBuffer)) {
+      return false;
+    }
+  }
+
   return true;
 }

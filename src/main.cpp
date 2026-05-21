@@ -138,6 +138,14 @@ void setup()
   if (matrixClockConfigRegisterPortalContracts())
   {
     Serial.println("[CONFIG] AP portal schema registration OK");
+    if (matrixClockConfigValidatePortalFieldMappings())
+    {
+      Serial.println("[CONFIG] AP portal field mappings validated");
+    }
+    else
+    {
+      Serial.println("[CONFIG] WARNING: AP portal field mappings validation failed");
+    }
   }
   else
   {

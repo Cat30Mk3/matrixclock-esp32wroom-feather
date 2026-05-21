@@ -32,5 +32,6 @@ bool matrixClockConfigPersistActiveRuntimeConfig();
 
 bool matrixClockConfigGetFieldValue(const char *fieldId, char *outValue, size_t outValueLen);
 bool matrixClockConfigSetFieldValue(const char *fieldId, const char *value);
+bool matrixClockConfigValidatePortalFieldMappings();
 
 #endif // MATRIXCLOCK_CONFIG_H
