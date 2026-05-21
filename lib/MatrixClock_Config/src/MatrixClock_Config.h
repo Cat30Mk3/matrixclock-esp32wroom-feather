@@ -30,4 +30,7 @@ const MatrixClockRuntimeConfig &matrixClockConfigGetActiveRuntimeConfig();
 void matrixClockConfigSetActiveRuntimeConfig(const MatrixClockRuntimeConfig &runtimeConfig);
 bool matrixClockConfigPersistActiveRuntimeConfig();
 
+bool matrixClockConfigGetFieldValue(const char *fieldId, char *outValue, size_t outValueLen);
+bool matrixClockConfigSetFieldValue(const char *fieldId, const char *value);
+
 #endif // MATRIXCLOCK_CONFIG_H

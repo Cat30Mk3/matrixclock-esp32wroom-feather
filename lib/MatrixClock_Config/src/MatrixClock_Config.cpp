@@ -7,6 +7,22 @@ const char *kConfigNamespace = "mcfg";
 const char *kSchemaKey = "schema";
 const char *kConfigBlobKey = "cfgblob";
 
+bool copyToOutputBuffer(const char *source, char *outValue, size_t outValueLen) {
+  if (outValue == nullptr || outValueLen == 0) {
+    return false;
+  }
+  strlcpy(outValue, source == nullptr ? "" : source, outValueLen);
+  return true;
+}
+
+bool writeConfigField(char *destination, size_t destinationLen, const char *value) {
+  if (destination == nullptr || destinationLen == 0 || value == nullptr) {
+    return false;
+  }
+  strlcpy(destination, value, destinationLen);
+  return true;
+}
+
 void applyRuntimeConfigToLegacyGlobals(const MatrixClockRuntimeConfig &runtimeConfig) {
   configDb = runtimeConfig.configDb;
 }
@@ -174,4 +190,107 @@ void matrixClockConfigSetActiveRuntimeConfig(const MatrixClockRuntimeConfig &run
 
 bool matrixClockConfigPersistActiveRuntimeConfig() {
   return matrixClockConfigSaveToNvs(g_matrixClockRuntimeConfig);
+}
+
+bool matrixClockConfigGetFieldValue(const char *fieldId, char *outValue, size_t outValueLen) {
+  if (fieldId == nullptr) {
+    return false;
+  }
+
+  if (strcmp(fieldId, "wifi_enabled") == 0 || strcmp(fieldId, "mqtt_enabled") == 0) {
+    return copyToOutputBuffer("1", outValue, outValueLen);
+  }
+
+  if (strcmp(fieldId, "wifi_ssid_1") == 0) {
+    return copyToOutputBuffer(g_matrixClockRuntimeConfig.configDb.ssid, outValue, outValueLen);
+  }
+  if (strcmp(fieldId, "wifi_password_1") == 0) {
+    return copyToOutputBuffer(g_matrixClockRuntimeConfig.configDb.password, outValue, outValueLen);
+  }
+
+  // WiFiMulti not yet implemented in config schema. Keep fields readable as empty placeholders.
+  if (strcmp(fieldId, "wifi_ssid_2") == 0 || strcmp(fieldId, "wifi_password_2") == 0 ||
+      strcmp(fieldId, "wifi_ssid_3") == 0 || strcmp(fieldId, "wifi_password_3") == 0) {
+    return copyToOutputBuffer("", outValue, outValueLen);
+  }
+
+  if (strcmp(fieldId, "mqtt_server") == 0) {
+    return copyToOutputBuffer(g_matrixClockRuntimeConfig.configDb.mqttServer, outValue, outValueLen);
+  }
+  if (strcmp(fieldId, "mqtt_user") == 0) {
+    return copyToOutputBuffer(g_matrixClockRuntimeConfig.configDb.mqttUserId, outValue, outValueLen);
+  }
+  if (strcmp(fieldId, "mqtt_password") == 0) {
+    return copyToOutputBuffer(g_matrixClockRuntimeConfig.configDb.mqttPassword, outValue, outValueLen);
+  }
+  if (strcmp(fieldId, "mqtt_client_id") == 0) {
+    return copyToOutputBuffer(g_matrixClockRuntimeConfig.configDb.mqttClientId, outValue, outValueLen);
+  }
+
+  if (strcmp(fieldId, "mqtt_device_name_1") == 0) {
+    return copyToOutputBuffer(g_matrixClockRuntimeConfig.configDb.mqttDeviceName[0], outValue, outValueLen);
+  }
+  if (strcmp(fieldId, "mqtt_device_name_2") == 0) {
+    return copyToOutputBuffer(g_matrixClockRuntimeConfig.configDb.mqttDeviceName[1], outValue, outValueLen);
+  }
+  if (strcmp(fieldId, "mqtt_device_name_3") == 0) {
+    return copyToOutputBuffer(g_matrixClockRuntimeConfig.configDb.mqttDeviceName[2], outValue, outValueLen);
+  }
+
+  if (strcmp(fieldId, "mqtt_topic_cmd") == 0) {
+    return copyToOutputBuffer(g_matrixClockRuntimeConfig.configDb.lampCmndTopic, outValue, outValueLen);
+  }
+  if (strcmp(fieldId, "mqtt_topic_stat") == 0) {
+    return copyToOutputBuffer(g_matrixClockRuntimeConfig.configDb.lampStatTopic, outValue, outValueLen);
+  }
+
+  return false;
+}
+
+bool matrixClockConfigSetFieldValue(const char *fieldId, const char *value) {
+  if (fieldId == nullptr || value == nullptr) {
+    return false;
+  }
+
+  // Enable toggles are placeholders until runtime feature flags are added to schema.
+  if (strcmp(fieldId, "wifi_enabled") == 0 || strcmp(fieldId, "mqtt_enabled") == 0) {
+    return true;
+  }
+
+  bool updated = false;
+
+  if (strcmp(fieldId, "wifi_ssid_1") == 0) {
+    updated = writeConfigField(g_matrixClockRuntimeConfig.configDb.ssid, sizeof(g_matrixClockRuntimeConfig.configDb.ssid), value);
+  } else if (strcmp(fieldId, "wifi_password_1") == 0) {
+    updated = writeConfigField(g_matrixClockRuntimeConfig.configDb.password, sizeof(g_matrixClockRuntimeConfig.configDb.password), value);
+  } else if (strcmp(fieldId, "wifi_ssid_2") == 0 || strcmp(fieldId, "wifi_password_2") == 0 ||
+             strcmp(fieldId, "wifi_ssid_3") == 0 || strcmp(fieldId, "wifi_password_3") == 0) {
+    // WiFiMulti fields are accepted as no-op until schema expansion lands.
+    updated = true;
+  } else if (strcmp(fieldId, "mqtt_server") == 0) {
+    updated = writeConfigField(g_matrixClockRuntimeConfig.configDb.mqttServer, sizeof(g_matrixClockRuntimeConfig.configDb.mqttServer), value);
+  } else if (strcmp(fieldId, "mqtt_user") == 0) {
+    updated = writeConfigField(g_matrixClockRuntimeConfig.configDb.mqttUserId, sizeof(g_matrixClockRuntimeConfig.configDb.mqttUserId), value);
+  } else if (strcmp(fieldId, "mqtt_password") == 0) {
+    updated = writeConfigField(g_matrixClockRuntimeConfig.configDb.mqttPassword, sizeof(g_matrixClockRuntimeConfig.configDb.mqttPassword), value);
+  } else if (strcmp(fieldId, "mqtt_client_id") == 0) {
+    updated = writeConfigField(g_matrixClockRuntimeConfig.configDb.mqttClientId, sizeof(g_matrixClockRuntimeConfig.configDb.mqttClientId), value);
+  } else if (strcmp(fieldId, "mqtt_device_name_1") == 0) {
+    updated = writeConfigField(g_matrixClockRuntimeConfig.configDb.mqttDeviceName[0], sizeof(g_matrixClockRuntimeConfig.configDb.mqttDeviceName[0]), value);
+  } else if (strcmp(fieldId, "mqtt_device_name_2") == 0) {
+    updated = writeConfigField(g_matrixClockRuntimeConfig.configDb.mqttDeviceName[1], sizeof(g_matrixClockRuntimeConfig.configDb.mqttDeviceName[1]), value);
+  } else if (strcmp(fieldId, "mqtt_device_name_3") == 0) {
+    updated = writeConfigField(g_matrixClockRuntimeConfig.configDb.mqttDeviceName[2], sizeof(g_matrixClockRuntimeConfig.configDb.mqttDeviceName[2]), value);
+  } else if (strcmp(fieldId, "mqtt_topic_cmd") == 0) {
+    updated = writeConfigField(g_matrixClockRuntimeConfig.configDb.lampCmndTopic, sizeof(g_matrixClockRuntimeConfig.configDb.lampCmndTopic), value);
+  } else if (strcmp(fieldId, "mqtt_topic_stat") == 0) {
+    updated = writeConfigField(g_matrixClockRuntimeConfig.configDb.lampStatTopic, sizeof(g_matrixClockRuntimeConfig.configDb.lampStatTopic), value);
+  }
+
+  if (!updated) {
+    return false;
+  }
+
+  applyRuntimeConfigToLegacyGlobals(g_matrixClockRuntimeConfig);
+  return true;
 }
