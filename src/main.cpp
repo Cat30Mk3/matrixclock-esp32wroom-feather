@@ -174,8 +174,17 @@ void setup()
     rtcPresent = false;
   }
 
-  customSetTimeFromRTC();
-  Serial.print("Time after RTC sync:");
+  if (rtcPresent)
+  {
+    customSetTimeFromRTC();
+  }
+  else
+  {
+    // Keep a sane baseline until NTP sync when RTC is unavailable.
+    setTime(compileTime());
+  }
+
+  Serial.print("Time after RTC stage:");
   digitalClockDisplay();
 
   displayHorzMessage("Starting WiFi..");
@@ -196,9 +205,16 @@ void setup()
   setSyncProvider(getNtpTime);
   setSyncInterval(24 * 60 * 60);
 
-  printRTCTime();
-  rtc.adjust(now());
-  printRTCTime();
+  if (rtcPresent)
+  {
+    printRTCTime();
+    rtc.adjust(now());
+    printRTCTime();
+  }
+  else
+  {
+    Serial.println("RTC adjust skipped (RTC not available)");
+  }
 
   Serial.print("Time after NTP sync:");
   digitalClockDisplay();

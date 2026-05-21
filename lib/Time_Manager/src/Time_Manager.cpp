@@ -85,8 +85,9 @@ void printRTCTime(void) {
   int rtcYear = rtcNow.year();
   char buf[50];
   char m[4];
-  strcpy(m, monthShortStr(rtcMonth));
+    strlcpy(m, monthShortStr(rtcMonth), sizeof(m));
+    const int timeLibWeekday = (rtcDow % 7) + 1;
   sprintf(buf, "RTC: %.2d:%.2d:%.2d %s %.2d %s %d %s",
-          rtcHour, rtcMinute, rtcSecond, dayShortStr(rtcDow), rtcDay, m, rtcYear, "UTC");
+      rtcHour, rtcMinute, rtcSecond, dayShortStr(timeLibWeekday), rtcDay, m, rtcYear, "UTC");
   Serial.println(buf);
 }
