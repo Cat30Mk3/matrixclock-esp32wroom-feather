@@ -21,6 +21,7 @@
 #include "ISR_Handlers.h"
 #include "Ticker_Manager.h"
 #include "Init_Manager.h"
+#include "MatrixClock_Config.h"
 
 // ============================================================================
 // RTC INSTANCE
@@ -108,6 +109,31 @@ void setup()
   intializeTemperatures();
   initializeGPIOPins();
   initializeGlobalVariables();
+
+  MatrixClockConfigInitResult configInitResult = {false, false};
+  if (matrixClockConfigInitializeRuntimeConfig(configInitResult))
+  {
+    if (configInitResult.loadedFromNvs)
+    {
+      Serial.println("[CONFIG] Loaded runtime configuration from NVS");
+    }
+    else
+    {
+      Serial.println("[CONFIG] Loaded bootstrap defaults (secrets) into runtime config");
+      if (configInitResult.seededNvsFromBootstrap)
+      {
+        Serial.println("[CONFIG] Seeded NVS from bootstrap defaults");
+      }
+      else
+      {
+        Serial.println("[CONFIG] WARNING: Bootstrap defaults loaded but NVS seed write failed");
+      }
+    }
+  }
+  else
+  {
+    Serial.println("[CONFIG] WARNING: Runtime config initialization reported failure");
+  }
 
   // Scan I2C bus for devices
   Serial.println("\nScanning I2C bus for devices...");
