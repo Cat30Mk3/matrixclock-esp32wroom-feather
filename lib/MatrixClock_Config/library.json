@@ -13,7 +13,6 @@
   "frameworks": "arduino",
   "dependencies": {
     "AP_Config_Portal": "*",
-    "globals": "*",
-    "Mode_Manager": "*"
+    "globals": "*"
   }
 }

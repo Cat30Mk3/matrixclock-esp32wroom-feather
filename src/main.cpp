@@ -22,31 +22,6 @@
 #include "Ticker_Manager.h"
 #include "Init_Manager.h"
 #include "MatrixClock_Config.h"
-#include "Mode_Manager.h"
-
-namespace {
-const ModeManagerConfig kModeManagerConfig = {
-  3000,
-  1200,
-  4000,
-  5000
-};
-bool s_confirmPromptShown = false;
-
-void handleModeEntryEvent(MatrixClockMode mode) {
-  Serial.print("[MODE] Entered ");
-  Serial.print(modeManagerGetModeName(mode));
-  Serial.println(" mode");
-
-  if (mode == MATRIXCLOCK_MODE_AP_SETUP) {
-    displayHorzMessage("AP Setup");
-    displayHorzMessage("Select OK");
-  } else if (mode == MATRIXCLOCK_MODE_RECOVERY) {
-    displayHorzMessage("Recovery");
-    displayHorzMessage("AP Setup");
-  }
-}
-}
 
 // ============================================================================
 // RTC INSTANCE
@@ -134,12 +109,6 @@ void setup()
   intializeTemperatures();
   initializeGPIOPins();
   initializeGlobalVariables();
-  modeManagerBegin(kModeManagerConfig);
-  modeManagerLogButtonPinMapping();
-
-  if (modeManagerCheckBootRecoveryRequest()) {
-    Serial.println("[MODE] Boot recovery combo detected");
-  }
 
   MatrixClockConfigInitResult configInitResult = {false, false};
   if (matrixClockConfigInitializeRuntimeConfig(configInitResult))
@@ -235,44 +204,33 @@ void setup()
   Serial.print("Time after RTC stage:");
   digitalClockDisplay();
 
-  if (modeManagerInApControlMode())
+  displayHorzMessage("Starting WiFi..");
+  if (newWiFiConnect(true))
+    displayHorzMessage("WiFi Up");
+  else
+    displayHorzMessage("WiFi Dn");
+
+  if (newMqttConnect())
+    displayHorzMessage("MQTT Up");
+  else
+    displayHorzMessage("MQTT Dn");
+
+  displayHorzMessage("Starting NTP..");
+  Udp.begin(localPort);
+  // Serial.println("waiting for sync");
+  delay(2000);
+  setSyncProvider(getNtpTime);
+  setSyncInterval(24 * 60 * 60);
+
+  if (rtcPresent)
   {
-    MatrixClockMode mode;
-    if (modeManagerConsumeModeEntryEvent(mode)) {
-      handleModeEntryEvent(mode);
-    }
-    Serial.println("[MODE] AP/Recovery mode active - bypassing normal network startup (Phase 2)");
+    printRTCTime();
+    rtc.adjust(now());
+    printRTCTime();
   }
   else
   {
-    displayHorzMessage("Starting WiFi..");
-    if (newWiFiConnect(true))
-      displayHorzMessage("WiFi Up");
-    else
-      displayHorzMessage("WiFi Dn");
-
-    if (newMqttConnect())
-      displayHorzMessage("MQTT Up");
-    else
-      displayHorzMessage("MQTT Dn");
-
-    displayHorzMessage("Starting NTP..");
-    Udp.begin(localPort);
-    // Serial.println("waiting for sync");
-    delay(2000);
-    setSyncProvider(getNtpTime);
-    setSyncInterval(24 * 60 * 60);
-
-    if (rtcPresent)
-    {
-      printRTCTime();
-      rtc.adjust(now());
-      printRTCTime();
-    }
-    else
-    {
-      Serial.println("RTC adjust skipped (RTC not available)");
-    }
+    Serial.println("RTC adjust skipped (RTC not available)");
   }
 
   Serial.print("Time after NTP sync:");
@@ -290,29 +248,6 @@ void setup()
 // ============================================================================
 void loop()
 {
-  modeManagerServiceButtonDiagnostics();
-  modeManagerService();
-
-  MatrixClockMode enteredMode;
-  if (modeManagerConsumeModeEntryEvent(enteredMode)) {
-    handleModeEntryEvent(enteredMode);
-  }
-
-  if (modeManagerIsConfirmPromptActive()) {
-    if (!s_confirmPromptShown) {
-      displayHorzMessage("Tap Select");
-      s_confirmPromptShown = true;
-    }
-  } else {
-    s_confirmPromptShown = false;
-  }
-
-  if (modeManagerInApControlMode()) {
-    // AP server lifecycle lands in Phase 3. For Phase 2 this mode gate prevents normal runtime flow.
-    nonBlockingDelay(100);
-    return;
-  }
-
   char displayString[10];
   parola.synchZoneStart();
   parola.displayAnimate();
