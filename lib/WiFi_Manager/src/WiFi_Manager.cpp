@@ -9,6 +9,31 @@ const int      kPerAttemptWaitSteps     = 16;
 const uint32_t kPerStepDelayMs          = 750;
 const uint32_t kInterAttemptBackoffMs   = 500;
 
+// Wait for 'ms' milliseconds while keeping the Parola display animated.
+// Calls parola.displayAnimate() every 50 ms so scrolling messages stay alive.
+void wifiWaitWithDisplay(uint32_t ms) {
+  const uint32_t kChunkMs = 50;
+  uint32_t remaining = ms;
+  while (remaining > 0) {
+    uint32_t chunk = (remaining < kChunkMs) ? remaining : kChunkMs;
+    nonBlockingDelay(chunk);
+    parola.displayAnimate();
+    remaining -= chunk;
+  }
+}
+
+// Set a short non-blocking "WiFi X" dot-cycle label on the display.
+// Restarts the scroll whenever the zone reports done so the screen is never blank.
+void wifiShowConnecting(int attemptNum) {
+  static char buf[12];
+  const char *dots = (attemptNum % 3 == 1) ? "." : (attemptNum % 3 == 2) ? ".." : "...";
+  snprintf(buf, sizeof(buf), "WiFi%s", dots);
+  if (parola.getZoneStatus(ZONE_SINGLE)) {
+    parola.displayZoneText(ZONE_SINGLE, buf, PA_CENTER, H_SCROLL_SPEED, H_PAUSE, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+    parola.synchZoneStart();
+  }
+}
+
 const char *wifiStatusToString(wl_status_t status) {
   switch (status) {
     case WL_IDLE_STATUS:
@@ -48,7 +73,11 @@ bool newWiFiConnect(boolean force) {
   // Disconnect once here, let the stack settle for the full kInitialStaSettleDelayMs,
   // then retry with only a soft disconnect between attempts.
   WiFi.disconnect(false, false);
-  nonBlockingDelay(kInitialStaSettleDelayMs);
+  // Show initial "WiFi." while the radio settles — starts the animation before the
+  // long settle delay so the display is never blank.
+  parola.displayZoneText(ZONE_SINGLE, "WiFi.", PA_CENTER, H_SCROLL_SPEED, H_PAUSE, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+  parola.synchZoneStart();
+  wifiWaitWithDisplay(kInitialStaSettleDelayMs);
 
   // Resolve hostname from config; fall back to firmware default if blank.
   const char *hostname = (configDb.wifiHostname[0] != '\0') ? configDb.wifiHostname : "matrixClock";
@@ -82,7 +111,8 @@ bool newWiFiConnect(boolean force) {
     }
 
     for (int step = 0; step < kPerAttemptWaitSteps; step++) {
-      nonBlockingDelay(kPerStepDelayMs);
+      wifiWaitWithDisplay(kPerStepDelayMs);
+      wifiShowConnecting(i);
       if (WiFi.status() == WL_CONNECTED) break;
     }
 
@@ -109,7 +139,7 @@ bool newWiFiConnect(boolean force) {
 
     // Soft disconnect between retries — no radio power cycle.
     WiFi.disconnect(false, false);
-    nonBlockingDelay(kInterAttemptBackoffMs);
+    wifiWaitWithDisplay(kInterAttemptBackoffMs);
   }
 
   Serial.println("[newWiFiConnect] wifi failed to connect");

@@ -528,7 +528,14 @@ void loop()
     // Portal-initiated exit (Save & Exit, Cancel & Exit, inactivity timeout)
     if (apPortalShouldExit())
     {
+      bool wasSave = apPortalExitWasSave();
       apPortalClearExitRequest();
+      if (wasSave) {
+        // Reboot so all saved settings (WiFi creds, toggles, hostname, etc.) take effect cleanly.
+        displayHorzMessage("Rebooting..");
+        nonBlockingDelay(500);
+        ESP.restart();
+      }
       modeManagerRequestNormalMode();
       nonBlockingDelay(20);
       return;
