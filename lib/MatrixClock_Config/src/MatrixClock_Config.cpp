@@ -76,11 +76,34 @@ bool portalSetFieldValue(void *context, const char *fieldId, const char *value) 
 
 bool portalGetStatus(void *context, APPortalStatus &status) {
   (void)context;
-  status.apModeActive = modeManagerInApControlMode();
+  static char sApSsid[44] = {0};
+  static char sApIp[20]   = {0};
+
+  status.apModeActive     = modeManagerInApControlMode();
   status.stationConnected = (WiFi.status() == WL_CONNECTED);
-  status.mqttConnected = mqttClient.connected();
-  status.timeValid = (timeStatus() != timeNotSet);
-  status.timeSourceMode = "RTC_OR_NTP";
+  status.mqttConnected    = mqttClient.connected();
+  status.timeValid        = (timeStatus() != timeNotSet);
+  status.timeSourceMode   = "RTC_OR_NTP";
+
+  // Device info for the portal Info page
+  status.projectName      = projectNameFromFileName;
+  status.firmwareVersion  = projectVersionFromFileName;
+  status.compileDate      = compileDateFromFileName;
+  status.compileTime      = compileTimeFromFileName;
+  status.uptimeSeconds    = millis() / 1000UL;
+
+  // AP SSID — mirrors the name constructed in startApSetupRuntime()
+  if (projectNameFromFileName[0] != '\0') {
+    snprintf(sApSsid, sizeof(sApSsid), "%s-AP", projectNameFromFileName);
+  } else {
+    strlcpy(sApSsid, "matrixClock-AP", sizeof(sApSsid));
+  }
+  status.apSsid = sApSsid;
+
+  // AP IP
+  WiFi.softAPIP().toString().toCharArray(sApIp, sizeof(sApIp));
+  status.apIp = sApIp;
+
   return true;
 }
 

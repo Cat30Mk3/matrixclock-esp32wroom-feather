@@ -62,6 +62,8 @@ const ModeManagerConfig kPassiveModeManagerConfig = {
 };
 
 bool s_apRuntimeActive = false;
+char s_apSsid[40] = "";           // stored for stage-1 display
+uint8_t s_lastApStationCount = 0; // tracks first client connection
 
 void startApSetupRuntime()
 {
@@ -71,18 +73,18 @@ void startApSetupRuntime()
   }
 
   const char *baseName = (projectNameFromFileName[0] != '\0') ? projectNameFromFileName : "matrixClock";
-  char apSsid[40];
-  snprintf(apSsid, sizeof(apSsid), "%s-AP", baseName);
+  snprintf(s_apSsid, sizeof(s_apSsid), "%s-AP", baseName);
+  s_lastApStationCount = 0;
 
   WiFi.mode(WIFI_AP_STA);
-  const bool apStarted = WiFi.softAP(apSsid);
+  const bool apStarted = WiFi.softAP(s_apSsid);
 
   apPortalBegin();
   const bool portalRegistered = matrixClockConfigRegisterPortalContracts();
   const bool portalServerStarted = portalRegistered && apPortalStartServer(80);
 
   Serial.print("[AP] start ssid=");
-  Serial.println(apSsid);
+  Serial.println(s_apSsid);
   Serial.print("[AP] softAP=");
   Serial.println(apStarted ? "up" : "failed");
   Serial.print("[AP] portalContracts=");
@@ -179,11 +181,11 @@ void handleModeEntryEvents()
 
 void serviceApModeDisplay()
 {
-  static bool s_apDisplayInitialized = false;
-  static uint8_t s_apBannerIndex = 0;
-  static char s_pinBanner[16] = "PIN ----";
+  static bool           s_apDisplayInitialized = false;
+  static APDisplayStage s_lastRenderedStage     = AP_STAGE_SSID;
+  static char           s_currentBanner[32]     = "";
   const uint16_t kApScrollSpeed = 45;
-  const uint16_t kApPauseMs = 700;
+  const uint16_t kApPauseMs     = 700;
 
   auto startApBanner = [&](const char *text) {
 #if DISPLAY_CONFIG == DISPLAY1X4
@@ -200,38 +202,48 @@ void serviceApModeDisplay()
   if (!modeManagerInApControlMode())
   {
     s_apDisplayInitialized = false;
-    s_apBannerIndex = 0;
+    s_lastRenderedStage    = AP_STAGE_SSID;
     return;
   }
 
-  const char *activePin = apPortalGetLoginPin();
-  if (activePin != nullptr)
-  {
-    snprintf(s_pinBanner, sizeof(s_pinBanner), "PIN %s", activePin);
-  }
+  APDisplayStage stage = apPortalGetDisplayStage();
 
-  if (!s_apDisplayInitialized)
+  // Rebuild banner text whenever the stage changes or on first call
+  if (stage != s_lastRenderedStage || !s_apDisplayInitialized)
   {
+    if (stage == AP_STAGE_SSID)
+    {
+      strlcpy(s_currentBanner, s_apSsid[0] ? s_apSsid : "matrixClock-AP", sizeof(s_currentBanner));
+    }
+    else if (stage == AP_STAGE_IP)
+    {
+      strlcpy(s_currentBanner, "192.168.4.1", sizeof(s_currentBanner));
+    }
+    else if (stage == AP_STAGE_PIN)
+    {
+      const char *pin = apPortalGetLoginPin();
+      snprintf(s_currentBanner, sizeof(s_currentBanner), "PIN %s", pin ? pin : "----");
+    }
+    else // AP_STAGE_ACTIVE
+    {
+      strlcpy(s_currentBanner, "AP Active", sizeof(s_currentBanner));
+    }
+
     parola.displayClear();
-    startApBanner("AP SETUP");
+    startApBanner(s_currentBanner);
     s_apDisplayInitialized = true;
+    s_lastRenderedStage    = stage;
+    return; // let the first animation frame settle
   }
 
+  // Re-arm scroll when animation completes (message repeats per spec)
 #if DISPLAY_CONFIG == DISPLAY1X4
   if (parola.getZoneStatus(ZONE_SINGLE))
 #elif DISPLAY_CONFIG == DISPLAY2X8
   if (parola.getZoneStatus(ZONE_LOWER) && parola.getZoneStatus(ZONE_UPPER))
 #endif
   {
-    ++s_apBannerIndex;
-    if ((s_apBannerIndex % 2) == 0)
-    {
-      startApBanner("AP SETUP");
-    }
-    else
-    {
-      startApBanner(s_pinBanner);
-    }
+    startApBanner(s_currentBanner);
   }
 
   parola.displayAnimate();
@@ -492,7 +504,26 @@ void loop()
 
   if (modeManagerInApControlMode())
   {
+    // Track the first STA connection to advance the display from SSID → IP stage
+    uint8_t stationCount = WiFi.softAPgetStationNum();
+    if (stationCount > 0 && s_lastApStationCount == 0 && apPortalGetDisplayStage() == AP_STAGE_SSID)
+    {
+      apPortalSignalClientConnected();
+      Serial.println("[AP] First client connected — advancing display to IP stage");
+    }
+    s_lastApStationCount = stationCount;
+
     apPortalService();
+
+    // Portal-initiated exit (Save & Exit, Cancel & Exit, inactivity timeout)
+    if (apPortalShouldExit())
+    {
+      apPortalClearExitRequest();
+      modeManagerRequestNormalMode();
+      nonBlockingDelay(20);
+      return;
+    }
+
     serviceApModeDisplay();
 
     if (millis() - lastApModeHeartbeatMs >= 5000)
