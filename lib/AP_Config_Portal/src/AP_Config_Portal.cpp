@@ -30,8 +30,7 @@ static uint16_t    s_serverPort   = kDefaultHttpPort;
 static bool        s_serverRunning= false;
 
 static char     s_loginPin[5]                     = "0000";
-static char     s_sessionToken[kSessionTokenLen+1] = {0};
-static bool     s_sessionValid                     = false;
+static bool     s_authenticated                    = false;
 static uint32_t s_lastActivityMs                   = 0;
 static bool     s_hasUnsavedChanges                = false;
 
@@ -51,7 +50,6 @@ void renderInfoPage();
 void renderConfigPage(const char *pageId);
 void handleSaveConfigPage(const char *pageId);
 void renderExitPage(bool saved);
-bool checkSession();
 void recordActivity();
 String consumeFlash();
 
@@ -96,37 +94,11 @@ void generateLoginPin() {
   snprintf(s_loginPin, sizeof(s_loginPin), "%04lu", (unsigned long)v);
 }
 
-void generateSessionToken() {
-  for (size_t i = 0; i < kSessionTokenLen; i += 2) {
-    uint8_t b = (uint8_t)(esp_random() & 0xFF);
-    snprintf(s_sessionToken + i, 3, "%02x", b);
-  }
-  s_sessionToken[kSessionTokenLen] = '\0';
-  s_sessionValid = true;
-}
-
-void invalidateSession() {
-  s_sessionToken[0] = '\0';
-  s_sessionValid    = false;
-}
-
-bool checkSession() {
-  if (!s_server || !s_sessionValid) return false;
-  if (!s_server->hasHeader("Cookie")) return false;
-  String cookie = s_server->header("Cookie");
-  String needle = String("token=") + s_sessionToken;
-  return (cookie.indexOf(needle) >= 0);
-}
-
-void sendSessionCookie() {
-  if (!s_server) return;
-  String hdr = String("token=") + s_sessionToken + "; HttpOnly; SameSite=Strict";
-  s_server->sendHeader("Set-Cookie", hdr, true);
-}
-
 // Per spec: an invalid/expired session closes the AP entirely, does not loop back to PIN.
+// A simple boolean is used instead of a cookie token — the iOS CNA captive portal
+// webview does not reliably forward cookies across page navigations.
 bool ensureAuthenticated() {
-  if (checkSession()) return true;
+  if (s_authenticated) return true;
   s_exitRequested = true;
   s_exitWasSave   = false;
   sendRedirect("/");
@@ -290,6 +262,7 @@ void renderInfoPage() {
   if (s_callbacks.getStatus) s_callbacks.getStatus(s_callbacks.context, st);
 
   String html = pageHead("Device Info");
+  html.reserve(2048);
   html += F("<table>");
   if (hasText(st.projectName))
     html += "<tr><td>Project</td><td>" + htmlEscape(String(st.projectName)) + "</td></tr>";
@@ -390,7 +363,7 @@ void renderExitPage(bool saved) {
 
 void handleRoot() {
   recordActivity();
-  if (checkSession()) { sendRedirect("/menu"); return; }
+  if (s_authenticated) { sendRedirect("/menu"); return; }
   // Advance display stage from SSID/IP to PIN when user opens the portal
   if (s_displayStage < AP_STAGE_PIN) s_displayStage = AP_STAGE_PIN;
   renderLoginPage("");
@@ -403,12 +376,11 @@ void handleLogin() {
   const String entered = s_server->arg("pin");
   if (entered != String(s_loginPin)) { renderLoginPage("Invalid PIN \xe2\x80\x94 check display"); return; }
 
-  generateSessionToken();
-  s_displayStage = AP_STAGE_ACTIVE;
+  s_authenticated = true;
+  s_displayStage  = AP_STAGE_ACTIVE;
   if (s_callbacks.loadConfig) s_callbacks.loadConfig(s_callbacks.context);
   s_hasUnsavedChanges = false;
 
-  sendSessionCookie();
   sendRedirect("/menu");
 }
 
@@ -465,7 +437,7 @@ void handleExitCancel() {
 
 void handleLogout() {
   recordActivity();
-  invalidateSession();
+  s_authenticated = false;
   sendRedirect("/");
 }
 
@@ -501,7 +473,7 @@ bool apPortalStartServer(uint16_t port) {
   if (!s_server) return false;
 
   generateLoginPin();
-  invalidateSession();
+  s_authenticated    = false;
   s_displayStage     = AP_STAGE_SSID;
   s_exitRequested    = false;
   s_exitWasSave      = false;
@@ -509,10 +481,6 @@ bool apPortalStartServer(uint16_t port) {
   s_hasUnsavedChanges= false;
   s_lastActivityMs   = millis();
   s_flashMessage[0]  = '\0';
-
-  // Register "Cookie" header for collection so checkSession() can read it
-  static const char *kCollectedHeaders[] = {"Cookie"};
-  s_server->collectHeaders(kCollectedHeaders, 1);
 
   // Core routes
   s_server->on("/",            HTTP_GET,  handleRoot);
@@ -562,7 +530,7 @@ void apPortalStopServer() {
     s_server = nullptr;
   }
   s_serverRunning = false;
-  invalidateSession();
+  s_authenticated = false;
 }
 
 void apPortalService() {

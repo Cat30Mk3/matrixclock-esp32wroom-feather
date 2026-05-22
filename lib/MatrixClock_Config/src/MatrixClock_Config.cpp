@@ -100,8 +100,8 @@ bool portalGetStatus(void *context, APPortalStatus &status) {
   }
   status.apSsid = sApSsid;
 
-  // AP IP
-  WiFi.softAPIP().toString().toCharArray(sApIp, sizeof(sApIp));
+  // AP IP — use named variable to avoid calling toCharArray() on a temporary
+  { String apIpStr = WiFi.softAPIP().toString(); apIpStr.toCharArray(sApIp, sizeof(sApIp)); }
   status.apIp = sApIp;
 
   return true;

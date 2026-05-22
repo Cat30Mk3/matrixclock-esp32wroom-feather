@@ -37,13 +37,16 @@ bool newWiFiConnect(boolean force) {
     WiFi.persistent(false);
     WiFi.setSleep(false);
     WiFi.mode(WIFI_STA);
+    // Disconnect without cycling the radio power — a full power-off/on (wifioff=true)
+    // inside the retry loop only gives 250ms to reinitialize, which is insufficient.
+    // Disconnect once here, let the stack settle for the full kInitialStaSettleDelayMs,
+    // then retry with only a soft disconnect between attempts.
+    WiFi.disconnect(false, false);
     nonBlockingDelay(kInitialStaSettleDelayMs);
 
     for (int i = 1; i <= 6; i++) {
       Serial.print("[newWiFiConnect] wifi not connected - attempt #");
       Serial.println(i);
-      WiFi.disconnect(true, true);
-      nonBlockingDelay(250);
       WiFi.setHostname("matrixClock");
 
       if (force) {
@@ -95,6 +98,9 @@ bool newWiFiConnect(boolean force) {
       Serial.print(wifiStatusToString(WiFi.status()));
       Serial.println(")");
 
+      // Soft disconnect between retries — no radio power cycle, just clear the
+      // connection state and wait for the backoff period before trying again.
+      WiFi.disconnect(false, false);
       nonBlockingDelay(kInterAttemptBackoffMs);
     }
 
