@@ -4,6 +4,11 @@
 #include <Preferences.h>
 
 namespace {
+// Size of the v1 configDb_t blob as stored in NVS — used for migration detection.
+static const size_t kV1ConfigDbSize = 570;
+// Build-time guard: all-char + bool fields → no padding expected on ESP32.
+static_assert(sizeof(configDb_t) == 724, "configDb_t size mismatch — check struct padding");
+
 const char *kConfigNamespace = "mcfg";
 const char *kSchemaKey = "schema";
 const char *kConfigBlobKey = "cfgblob";
@@ -11,6 +16,7 @@ const char *kMappedFieldIds[] = {
   "wifi_enabled",
   "wifi_ssid_1",
   "wifi_password_1",
+  "wifi_hostname",
   "wifi_ssid_2",
   "wifi_password_2",
   "wifi_ssid_3",
@@ -111,7 +117,8 @@ const APFieldDefinition kPortalFields[] = {
   {"wifi", "wifi_enabled", "WiFi Enabled", AP_FIELD_TOGGLE, 1, true, nullptr, 0},
   {"wifi", "wifi_ssid_1", "WiFi SSID #1", AP_FIELD_TEXT, 29, false, nullptr, 0},
   {"wifi", "wifi_password_1", "WiFi Password #1", AP_FIELD_PASSWORD, 29, false, nullptr, 0},
-  {"wifi", "wifi_ssid_2", "WiFi SSID #2", AP_FIELD_TEXT, 29, false, nullptr, 0},
+  {"wifi", "wifi_hostname",   "WiFi Hostname",    AP_FIELD_TEXT,     31, false, nullptr, 0},
+  {"wifi", "wifi_ssid_2",    "WiFi SSID #2",     AP_FIELD_TEXT,     29, false, nullptr, 0},
   {"wifi", "wifi_password_2", "WiFi Password #2", AP_FIELD_PASSWORD, 29, false, nullptr, 0},
   {"wifi", "wifi_ssid_3", "WiFi SSID #3", AP_FIELD_TEXT, 29, false, nullptr, 0},
   {"wifi", "wifi_password_3", "WiFi Password #3", AP_FIELD_PASSWORD, 29, false, nullptr, 0},
@@ -165,13 +172,27 @@ bool matrixClockConfigLoadFromNvs(MatrixClockRuntimeConfig &outConfig) {
   }
 
   const uint16_t storedVersion = prefs.getUShort(kSchemaKey, 0);
-  if (!matrixClockConfigIsSchemaCompatible(storedVersion)) {
+  const size_t   storedLength  = prefs.getBytesLength(kConfigBlobKey);
+
+  // V1 → V2 migration: new fields are appended at the end of the struct so
+  // all v1 fields sit at identical byte offsets in v2.  Load the v1 blob into
+  // a zero-initialised v2 struct, then patch in sensible defaults for the new
+  // fields and auto-persist as v2 so the next boot loads cleanly.
+  if (storedVersion == 1 && storedLength == kV1ConfigDbSize) {
+    memset(&outConfig.configDb, 0, sizeof(configDb_t));
+    size_t readLen = prefs.getBytes(kConfigBlobKey, &outConfig.configDb, kV1ConfigDbSize);
     prefs.end();
-    return false;
+    if (readLen != kV1ConfigDbSize) return false;
+    outConfig.configDb.wifiEnabled = true;
+    outConfig.configDb.mqttEnabled = true;
+    strlcpy(outConfig.configDb.wifiHostname, "matrixClock", sizeof(outConfig.configDb.wifiHostname));
+    outConfig.schemaVersion = MATRIXCLOCK_CONFIG_SCHEMA_VERSION;
+    matrixClockConfigSaveToNvs(outConfig); // auto-persist migrated v2
+    Serial.println("[CONFIG] NVS schema migrated v1 -> v2");
+    return true;
   }
 
-  const size_t storedLength = prefs.getBytesLength(kConfigBlobKey);
-  if (storedLength != sizeof(configDb_t)) {
+  if (!matrixClockConfigIsSchemaCompatible(storedVersion) || storedLength != sizeof(configDb_t)) {
     prefs.end();
     return false;
   }
@@ -252,8 +273,11 @@ bool matrixClockConfigGetFieldValue(const char *fieldId, char *outValue, size_t 
     return false;
   }
 
-  if (strcmp(fieldId, "wifi_enabled") == 0 || strcmp(fieldId, "mqtt_enabled") == 0) {
-    return copyToOutputBuffer("1", outValue, outValueLen);
+  if (strcmp(fieldId, "wifi_enabled") == 0) {
+    return copyToOutputBuffer(g_matrixClockRuntimeConfig.configDb.wifiEnabled ? "1" : "0", outValue, outValueLen);
+  }
+  if (strcmp(fieldId, "mqtt_enabled") == 0) {
+    return copyToOutputBuffer(g_matrixClockRuntimeConfig.configDb.mqttEnabled ? "1" : "0", outValue, outValueLen);
   }
 
   if (strcmp(fieldId, "wifi_ssid_1") == 0) {
@@ -262,11 +286,20 @@ bool matrixClockConfigGetFieldValue(const char *fieldId, char *outValue, size_t 
   if (strcmp(fieldId, "wifi_password_1") == 0) {
     return copyToOutputBuffer(g_matrixClockRuntimeConfig.configDb.password, outValue, outValueLen);
   }
-
-  // WiFiMulti not yet implemented in config schema. Keep fields readable as empty placeholders.
-  if (strcmp(fieldId, "wifi_ssid_2") == 0 || strcmp(fieldId, "wifi_password_2") == 0 ||
-      strcmp(fieldId, "wifi_ssid_3") == 0 || strcmp(fieldId, "wifi_password_3") == 0) {
-    return copyToOutputBuffer("", outValue, outValueLen);
+  if (strcmp(fieldId, "wifi_hostname") == 0) {
+    return copyToOutputBuffer(g_matrixClockRuntimeConfig.configDb.wifiHostname, outValue, outValueLen);
+  }
+  if (strcmp(fieldId, "wifi_ssid_2") == 0) {
+    return copyToOutputBuffer(g_matrixClockRuntimeConfig.configDb.ssid2, outValue, outValueLen);
+  }
+  if (strcmp(fieldId, "wifi_password_2") == 0) {
+    return copyToOutputBuffer(g_matrixClockRuntimeConfig.configDb.password2, outValue, outValueLen);
+  }
+  if (strcmp(fieldId, "wifi_ssid_3") == 0) {
+    return copyToOutputBuffer(g_matrixClockRuntimeConfig.configDb.ssid3, outValue, outValueLen);
+  }
+  if (strcmp(fieldId, "wifi_password_3") == 0) {
+    return copyToOutputBuffer(g_matrixClockRuntimeConfig.configDb.password3, outValue, outValueLen);
   }
 
   if (strcmp(fieldId, "mqtt_server") == 0) {
@@ -307,8 +340,14 @@ bool matrixClockConfigSetFieldValue(const char *fieldId, const char *value) {
     return false;
   }
 
-  // Enable toggles are placeholders until runtime feature flags are added to schema.
-  if (strcmp(fieldId, "wifi_enabled") == 0 || strcmp(fieldId, "mqtt_enabled") == 0) {
+  if (strcmp(fieldId, "wifi_enabled") == 0) {
+    g_matrixClockRuntimeConfig.configDb.wifiEnabled = (strcmp(value, "1") == 0);
+    applyRuntimeConfigToLegacyGlobals(g_matrixClockRuntimeConfig);
+    return true;
+  }
+  if (strcmp(fieldId, "mqtt_enabled") == 0) {
+    g_matrixClockRuntimeConfig.configDb.mqttEnabled = (strcmp(value, "1") == 0);
+    applyRuntimeConfigToLegacyGlobals(g_matrixClockRuntimeConfig);
     return true;
   }
 
@@ -318,10 +357,16 @@ bool matrixClockConfigSetFieldValue(const char *fieldId, const char *value) {
     updated = writeConfigField(g_matrixClockRuntimeConfig.configDb.ssid, sizeof(g_matrixClockRuntimeConfig.configDb.ssid), value);
   } else if (strcmp(fieldId, "wifi_password_1") == 0) {
     updated = writeConfigField(g_matrixClockRuntimeConfig.configDb.password, sizeof(g_matrixClockRuntimeConfig.configDb.password), value);
-  } else if (strcmp(fieldId, "wifi_ssid_2") == 0 || strcmp(fieldId, "wifi_password_2") == 0 ||
-             strcmp(fieldId, "wifi_ssid_3") == 0 || strcmp(fieldId, "wifi_password_3") == 0) {
-    // WiFiMulti fields are accepted as no-op until schema expansion lands.
-    updated = true;
+  } else if (strcmp(fieldId, "wifi_hostname") == 0) {
+    updated = writeConfigField(g_matrixClockRuntimeConfig.configDb.wifiHostname, sizeof(g_matrixClockRuntimeConfig.configDb.wifiHostname), value);
+  } else if (strcmp(fieldId, "wifi_ssid_2") == 0) {
+    updated = writeConfigField(g_matrixClockRuntimeConfig.configDb.ssid2, sizeof(g_matrixClockRuntimeConfig.configDb.ssid2), value);
+  } else if (strcmp(fieldId, "wifi_password_2") == 0) {
+    updated = writeConfigField(g_matrixClockRuntimeConfig.configDb.password2, sizeof(g_matrixClockRuntimeConfig.configDb.password2), value);
+  } else if (strcmp(fieldId, "wifi_ssid_3") == 0) {
+    updated = writeConfigField(g_matrixClockRuntimeConfig.configDb.ssid3, sizeof(g_matrixClockRuntimeConfig.configDb.ssid3), value);
+  } else if (strcmp(fieldId, "wifi_password_3") == 0) {
+    updated = writeConfigField(g_matrixClockRuntimeConfig.configDb.password3, sizeof(g_matrixClockRuntimeConfig.configDb.password3), value);
   } else if (strcmp(fieldId, "mqtt_server") == 0) {
     updated = writeConfigField(g_matrixClockRuntimeConfig.configDb.mqttServer, sizeof(g_matrixClockRuntimeConfig.configDb.mqttServer), value);
   } else if (strcmp(fieldId, "mqtt_user") == 0) {

@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include "globals.h"
 
-static const uint16_t MATRIXCLOCK_CONFIG_SCHEMA_VERSION = 1;
+static const uint16_t MATRIXCLOCK_CONFIG_SCHEMA_VERSION = 2;
 
 struct MatrixClockRuntimeConfig {
 	uint16_t schemaVersion;

@@ -438,16 +438,26 @@ void setup()
   Serial.print("Time after RTC stage:");
   digitalClockDisplay();
 
-  displayHorzMessage("Starting WiFi..");
-  if (newWiFiConnect(true))
-    displayHorzMessage("WiFi Up");
-  else
-    displayHorzMessage("WiFi Dn");
+  if (configDb.wifiEnabled) {
+    displayHorzMessage("Starting WiFi..");
+    if (newWiFiConnect(true))
+      displayHorzMessage("WiFi Up");
+    else
+      displayHorzMessage("WiFi Dn");
+  } else {
+    Serial.println("[setup] WiFi disabled in config - skipping connect");
+    displayHorzMessage("WiFi Off");
+  }
 
-  if (newMqttConnect())
-    displayHorzMessage("MQTT Up");
-  else
-    displayHorzMessage("MQTT Dn");
+  if (configDb.mqttEnabled) {
+    if (newMqttConnect())
+      displayHorzMessage("MQTT Up");
+    else
+      displayHorzMessage("MQTT Dn");
+  } else {
+    Serial.println("[setup] MQTT disabled in config - skipping connect");
+    displayHorzMessage("MQTT Off");
+  }
 
   displayHorzMessage("Starting NTP..");
   Udp.begin(localPort);

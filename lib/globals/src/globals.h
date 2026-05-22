@@ -28,6 +28,14 @@ typedef struct {
   char mqttPassword[35];
   char lampCmndTopic[20];
   char lampStatTopic[20];
+  // Schema v2 additions — appended so v1 fields stay at identical byte offsets
+  char ssid2[30];
+  char password2[30];
+  char ssid3[30];
+  char password3[30];
+  char wifiHostname[32];
+  bool wifiEnabled;
+  bool mqttEnabled;
 } configDb_t;
 
 // Declare configDb - defined in globals.cpp (includes secrets.h)

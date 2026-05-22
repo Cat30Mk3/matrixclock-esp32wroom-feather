@@ -19,5 +19,12 @@ configDb_t configDb = {
   "dummyClientId",  // mqttClientId
   "DUMMY_MQTT_PASSWORD",  // mqttPassword
   "cmnd/Dummy_1",  // lampCmndTopic
-  "stat/Dummy_1"  // lampStatTopic
+  "stat/Dummy_1",  // lampStatTopic
+  "",              // ssid2
+  "",              // password2
+  "",              // ssid3
+  "",              // password3
+  "matrixClock",   // wifiHostname
+  true,            // wifiEnabled
+  true             // mqttEnabled
 };
