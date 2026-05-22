@@ -38,6 +38,8 @@ struct APPortalStatus {
 typedef bool (*APLoadConfigCallback)(void *context);
 typedef bool (*APSaveConfigCallback)(void *context);
 typedef bool (*APApplyConfigCallback)(void *context);
+typedef bool (*APGetFieldValueCallback)(void *context, const char *fieldId, char *outValue, size_t outValueLen);
+typedef bool (*APSetFieldValueCallback)(void *context, const char *fieldId, const char *value);
 typedef bool (*APGetStatusCallback)(void *context, APPortalStatus &status);
 
 struct APPortalCallbacks {
@@ -45,11 +47,18 @@ struct APPortalCallbacks {
   APLoadConfigCallback loadConfig;
   APSaveConfigCallback saveConfig;
   APApplyConfigCallback applyConfig;
+  APGetFieldValueCallback getFieldValue;
+  APSetFieldValueCallback setFieldValue;
   APGetStatusCallback getStatus;
 };
 
 void apPortalBegin();
 void apPortalEnd();
+bool apPortalStartServer(uint16_t port = 80);
+void apPortalStopServer();
+void apPortalService();
+bool apPortalIsServerRunning();
+const char *apPortalGetLoginPin();
 
 bool apPortalRegisterPage(const char *pageId, const char *title);
 bool apPortalRegisterField(const APFieldDefinition &field);

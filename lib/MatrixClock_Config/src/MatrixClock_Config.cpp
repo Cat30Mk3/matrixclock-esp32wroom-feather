@@ -64,6 +64,16 @@ bool portalApplyConfig(void *context) {
   return true;
 }
 
+bool portalGetFieldValue(void *context, const char *fieldId, char *outValue, size_t outValueLen) {
+  (void)context;
+  return matrixClockConfigGetFieldValue(fieldId, outValue, outValueLen);
+}
+
+bool portalSetFieldValue(void *context, const char *fieldId, const char *value) {
+  (void)context;
+  return matrixClockConfigSetFieldValue(fieldId, value);
+}
+
 bool portalGetStatus(void *context, APPortalStatus &status) {
   (void)context;
   status.apModeActive = modeManagerInApControlMode();
@@ -116,6 +126,8 @@ bool matrixClockConfigRegisterPortalContracts() {
     portalLoadConfig,
     portalSaveConfig,
     portalApplyConfig,
+    portalGetFieldValue,
+    portalSetFieldValue,
     portalGetStatus
   };
   apPortalSetCallbacks(callbacks);

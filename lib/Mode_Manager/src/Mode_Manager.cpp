@@ -18,7 +18,7 @@ bool s_selectLatched = false;
 bool s_backgroundPollingEnabled = false;
 const uint32_t kButtonDiagDebounceMs = 40;
 const uint32_t kMenuReleaseToleranceMs = 150;
-const uint32_t kApExitComboHoldMs = 1500;
+const uint32_t kApExitComboHoldMs = 700;
 
 struct ButtonDiag {
   const char *name;
@@ -43,6 +43,7 @@ uint32_t s_menuReleaseStartMs = 0;
 uint32_t s_lastMenuHoldProgressLogMs = 0;
 uint32_t s_apExitHoldStartMs = 0;
 bool s_apExitComboAnnounced = false;
+uint32_t s_lastApExitProgressLogMs = 0;
 
 bool isPressedByIndex(size_t index) {
   int raw = digitalRead(kButtonDiag[index].pin);
@@ -70,6 +71,7 @@ void setMode(MatrixClockMode mode) {
   s_lastMenuHoldProgressLogMs = 0;
   s_apExitHoldStartMs = 0;
   s_apExitComboAnnounced = false;
+  s_lastApExitProgressLogMs = 0;
   s_confirmWindowStartMs = 0;
   s_selectLatched = false;
 }
@@ -240,8 +242,8 @@ void modeManagerLogButtonPinMapping() {
 
 void modeManagerServiceButtonDiagnostics() {
   if (modeManagerInApControlMode()) {
-    const bool menuPressed = isPressed(PB_MEN_PIN);
-    const bool cancelPressed = isPressed(PB_CNL_PIN);
+    const bool menuPressed = (digitalRead(PB_MEN_PIN) == LOW);
+    const bool cancelPressed = (digitalRead(PB_CNL_PIN) == LOW);
 
     if (menuPressed && cancelPressed) {
       if (!s_apExitComboAnnounced) {
@@ -251,6 +253,15 @@ void modeManagerServiceButtonDiagnostics() {
 
       if (s_apExitHoldStartMs == 0) {
         s_apExitHoldStartMs = millis();
+        s_lastApExitProgressLogMs = s_apExitHoldStartMs;
+      }
+
+      if ((millis() - s_lastApExitProgressLogMs) >= 250) {
+        s_lastApExitProgressLogMs = millis();
+        Serial.print("[MODE] AP exit hold ms=");
+        Serial.print(millis() - s_apExitHoldStartMs);
+        Serial.print("/");
+        Serial.println(kApExitComboHoldMs);
       }
 
       if (elapsedSince(s_apExitHoldStartMs, kApExitComboHoldMs)) {
@@ -261,6 +272,7 @@ void modeManagerServiceButtonDiagnostics() {
     } else {
       s_apExitHoldStartMs = 0;
       s_apExitComboAnnounced = false;
+      s_lastApExitProgressLogMs = 0;
     }
   }
 
@@ -320,6 +332,7 @@ void modeManagerBegin(const ModeManagerConfig &config) {
   s_lastMenuHoldProgressLogMs = 0;
   s_apExitHoldStartMs = 0;
   s_apExitComboAnnounced = false;
+  s_lastApExitProgressLogMs = 0;
   s_confirmWindowStartMs = 0;
   s_selectLatched = false;
 

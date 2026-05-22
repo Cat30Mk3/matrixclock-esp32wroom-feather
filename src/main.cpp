@@ -79,6 +79,7 @@ void startApSetupRuntime()
 
   apPortalBegin();
   const bool portalRegistered = matrixClockConfigRegisterPortalContracts();
+  const bool portalServerStarted = portalRegistered && apPortalStartServer(80);
 
   Serial.print("[AP] start ssid=");
   Serial.println(apSsid);
@@ -86,6 +87,14 @@ void startApSetupRuntime()
   Serial.println(apStarted ? "up" : "failed");
   Serial.print("[AP] portalContracts=");
   Serial.println(portalRegistered ? "ok" : "failed");
+  Serial.print("[AP] portalServer=");
+  Serial.println(portalServerStarted ? "up" : "failed");
+  if (portalServerStarted)
+  {
+    Serial.print("[AP] portal pin=");
+    Serial.println(apPortalGetLoginPin());
+    Serial.println("[AP] browse http://192.168.4.1/");
+  }
   if (apStarted)
   {
     Serial.print("[AP] ip=");
@@ -102,6 +111,7 @@ void stopApSetupRuntime()
     return;
   }
 
+  apPortalStopServer();
   apPortalEnd();
   WiFi.softAPdisconnect(true);
   WiFi.mode(WIFI_STA);
@@ -170,15 +180,19 @@ void handleModeEntryEvents()
 void serviceApModeDisplay()
 {
   static bool s_apDisplayInitialized = false;
+  static uint8_t s_apBannerIndex = 0;
+  static char s_pinBanner[16] = "PIN ----";
+  const uint16_t kApScrollSpeed = 45;
+  const uint16_t kApPauseMs = 700;
 
-  auto startApBanner = []() {
+  auto startApBanner = [&](const char *text) {
 #if DISPLAY_CONFIG == DISPLAY1X4
-    parola.displayZoneText(ZONE_SINGLE, "AP SETUP", PA_CENTER, H_SCROLL_SPEED, 0, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+    parola.displayZoneText(ZONE_SINGLE, text, PA_CENTER, kApScrollSpeed, kApPauseMs, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
 #elif DISPLAY_CONFIG == DISPLAY2X8
     parola.setFont(ZONE_LOWER, BigFontLower);
     parola.setFont(ZONE_UPPER, BigFontUpper);
-    parola.displayZoneText(ZONE_LOWER, "AP SETUP", PA_CENTER, H_SCROLL_SPEED, 0, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
-    parola.displayZoneText(ZONE_UPPER, "AP SETUP", PA_CENTER, H_SCROLL_SPEED, 0, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+    parola.displayZoneText(ZONE_LOWER, text, PA_CENTER, kApScrollSpeed, kApPauseMs, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+    parola.displayZoneText(ZONE_UPPER, text, PA_CENTER, kApScrollSpeed, kApPauseMs, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
 #endif
     parola.synchZoneStart();
   };
@@ -186,13 +200,20 @@ void serviceApModeDisplay()
   if (!modeManagerInApControlMode())
   {
     s_apDisplayInitialized = false;
+    s_apBannerIndex = 0;
     return;
+  }
+
+  const char *activePin = apPortalGetLoginPin();
+  if (activePin != nullptr)
+  {
+    snprintf(s_pinBanner, sizeof(s_pinBanner), "PIN %s", activePin);
   }
 
   if (!s_apDisplayInitialized)
   {
     parola.displayClear();
-    startApBanner();
+    startApBanner("AP SETUP");
     s_apDisplayInitialized = true;
   }
 
@@ -202,7 +223,15 @@ void serviceApModeDisplay()
   if (parola.getZoneStatus(ZONE_LOWER) && parola.getZoneStatus(ZONE_UPPER))
 #endif
   {
-    startApBanner();
+    ++s_apBannerIndex;
+    if ((s_apBannerIndex % 2) == 0)
+    {
+      startApBanner("AP SETUP");
+    }
+    else
+    {
+      startApBanner(s_pinBanner);
+    }
   }
 
   parola.displayAnimate();
@@ -463,6 +492,7 @@ void loop()
 
   if (modeManagerInApControlMode())
   {
+    apPortalService();
     serviceApModeDisplay();
 
     if (millis() - lastApModeHeartbeatMs >= 5000)
@@ -472,7 +502,7 @@ void loop()
       Serial.println(modeManagerGetModeName(modeManagerGetMode()));
     }
 
-    nonBlockingDelay(50);
+    nonBlockingDelay(20);
     return;
   }
 
