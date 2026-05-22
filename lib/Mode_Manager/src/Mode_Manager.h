@@ -25,6 +25,7 @@ void modeManagerService();
 MatrixClockMode modeManagerGetMode();
 const char *modeManagerGetModeName(MatrixClockMode mode);
 bool modeManagerInApControlMode();
+bool modeManagerRequestNormalMode();
 
 bool modeManagerIsConfirmPromptActive();
 bool modeManagerConsumeModeEntryEvent(MatrixClockMode &outMode);

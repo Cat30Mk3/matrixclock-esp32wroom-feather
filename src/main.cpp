@@ -24,6 +24,7 @@
 #include "Init_Manager.h"
 #include "MatrixClock_Config.h"
 #include "Mode_Manager.h"
+#include "AP_Config_Portal.h"
 
 // ============================================================================
 // RTC INSTANCE
@@ -59,6 +60,54 @@ const ModeManagerConfig kPassiveModeManagerConfig = {
   4000,
   5000
 };
+
+bool s_apRuntimeActive = false;
+
+void startApSetupRuntime()
+{
+  if (s_apRuntimeActive)
+  {
+    return;
+  }
+
+  const char *baseName = (projectNameFromFileName[0] != '\0') ? projectNameFromFileName : "matrixClock";
+  char apSsid[40];
+  snprintf(apSsid, sizeof(apSsid), "%s-AP", baseName);
+
+  WiFi.mode(WIFI_AP_STA);
+  const bool apStarted = WiFi.softAP(apSsid);
+
+  apPortalBegin();
+  const bool portalRegistered = matrixClockConfigRegisterPortalContracts();
+
+  Serial.print("[AP] start ssid=");
+  Serial.println(apSsid);
+  Serial.print("[AP] softAP=");
+  Serial.println(apStarted ? "up" : "failed");
+  Serial.print("[AP] portalContracts=");
+  Serial.println(portalRegistered ? "ok" : "failed");
+  if (apStarted)
+  {
+    Serial.print("[AP] ip=");
+    Serial.println(WiFi.softAPIP());
+  }
+
+  s_apRuntimeActive = apStarted;
+}
+
+void stopApSetupRuntime()
+{
+  if (!s_apRuntimeActive)
+  {
+    return;
+  }
+
+  apPortalEnd();
+  WiFi.softAPdisconnect(true);
+  WiFi.mode(WIFI_STA);
+  s_apRuntimeActive = false;
+  Serial.println("[AP] stopped");
+}
 
 void serviceModeManagerPassiveDiagnostics()
 {
@@ -105,11 +154,16 @@ void handleModeEntryEvents()
 
   if (enteredMode == MATRIXCLOCK_MODE_AP_SETUP)
   {
-    displayHorzMessage("AP Setup");
+    startApSetupRuntime();
   }
   else if (enteredMode == MATRIXCLOCK_MODE_RECOVERY)
   {
-    displayHorzMessage("Recovery");
+    Serial.println("[MODE] recovery mode entered");
+  }
+  else if (enteredMode == MATRIXCLOCK_MODE_NORMAL)
+  {
+    stopApSetupRuntime();
+    displayHorzMessage("Normal");
   }
 }
 
@@ -393,6 +447,11 @@ void loop()
 
   serviceModeManagerPassiveDiagnostics();
   handleModeEntryEvents();
+
+  if (!modeManagerInApControlMode() && s_apRuntimeActive)
+  {
+    stopApSetupRuntime();
+  }
 
   mqttServiceKeepAlive();
 

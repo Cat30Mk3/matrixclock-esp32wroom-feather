@@ -18,6 +18,7 @@ bool s_selectLatched = false;
 bool s_backgroundPollingEnabled = false;
 const uint32_t kButtonDiagDebounceMs = 40;
 const uint32_t kMenuReleaseToleranceMs = 150;
+const uint32_t kApExitComboHoldMs = 1500;
 
 struct ButtonDiag {
   const char *name;
@@ -40,6 +41,8 @@ uint32_t s_modeManagerStartMs = 0;
 bool s_externalButtonStuckWarningShown = false;
 uint32_t s_menuReleaseStartMs = 0;
 uint32_t s_lastMenuHoldProgressLogMs = 0;
+uint32_t s_apExitHoldStartMs = 0;
+bool s_apExitComboAnnounced = false;
 
 bool isPressedByIndex(size_t index) {
   int raw = digitalRead(kButtonDiag[index].pin);
@@ -65,6 +68,8 @@ void setMode(MatrixClockMode mode) {
   s_menuHoldStartMs = 0;
   s_menuReleaseStartMs = 0;
   s_lastMenuHoldProgressLogMs = 0;
+  s_apExitHoldStartMs = 0;
+  s_apExitComboAnnounced = false;
   s_confirmWindowStartMs = 0;
   s_selectLatched = false;
 }
@@ -196,6 +201,15 @@ bool modeManagerInApControlMode() {
   return s_mode == MATRIXCLOCK_MODE_AP_SETUP || s_mode == MATRIXCLOCK_MODE_RECOVERY;
 }
 
+bool modeManagerRequestNormalMode() {
+  if (s_mode == MATRIXCLOCK_MODE_NORMAL) {
+    return false;
+  }
+
+  setMode(MATRIXCLOCK_MODE_NORMAL);
+  return true;
+}
+
 bool modeManagerIsConfirmPromptActive() {
   return s_confirmPromptActive;
 }
@@ -225,6 +239,31 @@ void modeManagerLogButtonPinMapping() {
 }
 
 void modeManagerServiceButtonDiagnostics() {
+  if (modeManagerInApControlMode()) {
+    const bool menuPressed = isPressed(PB_MEN_PIN);
+    const bool cancelPressed = isPressed(PB_CNL_PIN);
+
+    if (menuPressed && cancelPressed) {
+      if (!s_apExitComboAnnounced) {
+        s_apExitComboAnnounced = true;
+        Serial.println("[MODE] AP exit combo detected (hold MEN+CNL)");
+      }
+
+      if (s_apExitHoldStartMs == 0) {
+        s_apExitHoldStartMs = millis();
+      }
+
+      if (elapsedSince(s_apExitHoldStartMs, kApExitComboHoldMs)) {
+        Serial.println("[MODE] exit combo accepted");
+        setMode(MATRIXCLOCK_MODE_NORMAL);
+        return;
+      }
+    } else {
+      s_apExitHoldStartMs = 0;
+      s_apExitComboAnnounced = false;
+    }
+  }
+
   for (size_t i = 0; i < (sizeof(kButtonDiag) / sizeof(kButtonDiag[0])); ++i) {
     int raw = digitalRead(kButtonDiag[i].pin);
     if (s_idleButtonRaw[i] == -1) {
@@ -279,6 +318,8 @@ void modeManagerBegin(const ModeManagerConfig &config) {
   s_menuHoldStartMs = 0;
   s_menuReleaseStartMs = 0;
   s_lastMenuHoldProgressLogMs = 0;
+  s_apExitHoldStartMs = 0;
+  s_apExitComboAnnounced = false;
   s_confirmWindowStartMs = 0;
   s_selectLatched = false;
 
