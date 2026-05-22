@@ -84,6 +84,7 @@ String htmlEscape(const String &s) {
 
 void sendRedirect(const char *path) {
   if (!s_server) return;
+  s_server->sendHeader("Connection", "close");
   s_server->sendHeader("Location", path);
   s_server->send(302, "text/plain", "");
 }
@@ -140,7 +141,7 @@ static const char kPageCss[] =
   "{width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;"
   "border-radius:4px;font-size:1em;margin-bottom:8px;}"
   ".btn{display:block;width:100%;padding:11px;border:0;border-radius:4px;"
-  "font-size:1em;cursor:pointer;margin:5px 0;color:#fff;text-align:center;"
+  "font-size:1em;font-family:inherit;cursor:pointer;margin:5px 0;color:#fff;text-align:center;"
   "text-decoration:none;box-sizing:border-box;}"
   ".bn{background:#1fa3ec;}.bg{background:#4caf50;}"
   ".br{background:#e53935;}.bk{background:#888;}"
@@ -217,6 +218,7 @@ void renderLoginPage(const String &message) {
             "<button type='submit' class='btn bn'>Login</button>"
             "</form>");
   html += pageFoot();
+  s_server->sendHeader("Connection", "close");
   s_server->send(200, "text/html", html);
 }
 
@@ -242,17 +244,19 @@ void renderMenuPage() {
   html += F("</table>");
 
   html += F("<h2>Configuration</h2>");
-  html += F("<a class='btn bn' href='/info'>Device Info</a>");
+  html += F("<button type='button' class='btn bn' onclick='location.href=\"/info\"'>Device Info</button>");
   for (size_t i = 0; i < s_pageCount; ++i) {
-    html += "<a class='btn bn' href='/" + String(s_pages[i].pageId) + "'>" +
-            htmlEscape(String(s_pages[i].title)) + "</a>";
+    html += "<button type='button' class='btn bn' onclick='location.href=\"/" +
+            String(s_pages[i].pageId) + "\"'>" +
+            htmlEscape(String(s_pages[i].title)) + "</button>";
   }
 
   html += F("<h2>Session</h2>");
-  html += F("<a class='btn bg' href='/exit/save'>Save &amp; Exit</a>");
-  html += F("<a class='btn bk' href='/exit/cancel'>Cancel &amp; Exit</a>");
+  html += F("<button type='button' class='btn bg' onclick='location.href=\"/exit/save\"'>Save &amp; Exit</button>");
+  html += F("<button type='button' class='btn bk' onclick='location.href=\"/exit/cancel\"'>Cancel &amp; Exit</button>");
 
   html += pageFoot();
+  s_server->sendHeader("Connection", "close");
   s_server->send(200, "text/html", html);
 }
 
@@ -279,8 +283,9 @@ void renderInfoPage() {
   html += "<tr><td>MQTT</td><td>" + String(st.mqttConnected ? "Connected" : "Not connected") + "</td></tr>";
   html += "<tr><td>Time source</td><td>" + htmlEscape(String(st.timeValid ? (st.timeSourceMode ? st.timeSourceMode : "OK") : "Invalid")) + "</td></tr>";
   html += F("</table>");
-  html += F("<a class='btn bn' style='margin-top:12px' href='/menu'>&#8592; Main Menu</a>");
+  html += F("<button type='button' class='btn bn' style='margin-top:12px' onclick='location.href=\"/menu\"'>&#8592; Main Menu</button>");
   html += pageFoot();
+  s_server->sendHeader("Connection", "close");
   s_server->send(200, "text/html", html);
 }
 
@@ -311,8 +316,9 @@ void renderConfigPage(const char *pageId) {
   html += F("</fieldset>");
   html += F("<button type='submit' class='btn bg'>Apply</button>");
   html += F("</form>");
-  html += F("<a class='btn bn' href='/menu'>&#8592; Main Menu</a>");
+  html += F("<button type='button' class='btn bn' onclick='location.href=\"/menu\"'>&#8592; Main Menu</button>");
   html += pageFoot();
+  s_server->sendHeader("Connection", "close");
   s_server->send(200, "text/html", html);
 }
 
@@ -356,6 +362,7 @@ void renderExitPage(bool saved) {
     html += F("<div class='msg'>Changes discarded. Returning to clock mode&hellip;</div>");
   html += F("<p style='color:#888;font-size:.9em;'>The AP will close in a moment.</p>");
   html += pageFoot();
+  s_server->sendHeader("Connection", "close");
   s_server->send(200, "text/html", html);
 }
 
@@ -444,6 +451,7 @@ void handleLogout() {
 // Captive portal: redirect OS connectivity-check requests to the portal
 void handleCaptiveRedirect() {
   if (!s_server) return;
+  s_server->sendHeader("Connection", "close");
   s_server->sendHeader("Location", "http://192.168.4.1/");
   s_server->send(302, "text/plain", "");
 }
@@ -465,7 +473,7 @@ void apPortalEnd() {
   apPortalStopServer();
 }
 
-bool apPortalStartServer(uint16_t port) {
+bool apPortalStartServer(uint16_t port, bool enableDns) {
   if (s_serverRunning) return true;
 
   s_serverPort = (port == 0) ? kDefaultHttpPort : port;
@@ -510,9 +518,11 @@ bool apPortalStartServer(uint16_t port) {
   s_serverRunning = true;
 
   // DNS server — redirect all names to 192.168.4.1 for captive portal
-  s_dns = new DNSServer();
-  if (s_dns) {
-    s_dns->start(kDnsPort, "*", IPAddress(192, 168, 4, 1));
+  if (enableDns) {
+    s_dns = new DNSServer();
+    if (s_dns) {
+      s_dns->start(kDnsPort, "*", IPAddress(192, 168, 4, 1));
+    }
   }
 
   return true;
