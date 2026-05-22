@@ -6,5 +6,6 @@
 void callback(char* topic, byte* payload, unsigned int length);
 bool newMqttConnect(void);
 void publishLampState(void);
+void mqttServiceKeepAlive(void);
 
 #endif // MQTT_MANAGER_H

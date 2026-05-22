@@ -1,5 +1,6 @@
 #include "Parola_Display.h"
 #include "globals.h"
+#include "Mode_Manager.h"
 
 void displayVertMessage(const char* msg) {
 #if DISPLAY_CONFIG == DISPLAY1X4
@@ -8,6 +9,7 @@ void displayVertMessage(const char* msg) {
   while (!(parola.getZoneStatus(ZONE_LOWER) && parola.getZoneStatus(ZONE_UPPER)))
 #endif
   {
+    if (modeManagerInApControlMode()) return;
     parola.displayAnimate();
     nonBlockingDelay(V_SCROLL_SPEED);
     Serial.print("^");
@@ -28,6 +30,7 @@ void displayVertMessage(const char* msg) {
   while (!(parola.getZoneStatus(ZONE_LOWER) && parola.getZoneStatus(ZONE_UPPER)))
 #endif
   {
+    if (modeManagerInApControlMode()) return;
     parola.displayAnimate();
     nonBlockingDelay(V_SCROLL_SPEED);
   }
@@ -36,6 +39,7 @@ void displayVertMessage(const char* msg) {
 boolean serviceQuadPage(int numbQuads, dispParamStruct UL, dispParamStruct UR, dispParamStruct LL, dispParamStruct LR) {
 #if DISPLAY_CONFIG == DISPLAY2X8
   while (!(parola.getZoneStatus(ZONE_UP_LFT))) {
+    if (modeManagerInApControlMode()) return false;
     parola.displayAnimate();
     nonBlockingDelay(V_SCROLL_SPEED);
   }
@@ -71,6 +75,7 @@ boolean serviceQuadPage(int numbQuads, dispParamStruct UL, dispParamStruct UR, d
 
   parola.synchZoneStart();
   while (!parola.getZoneStatus(ZONE_UP_LFT)) {
+    if (modeManagerInApControlMode()) return false;
     parola.displayAnimate();
     nonBlockingDelay(V_SCROLL_SPEED);
   }
@@ -88,6 +93,7 @@ void displayHorzMessage(const char* msg) {
   while (!(parola.getZoneStatus(ZONE_LOWER) && parola.getZoneStatus(ZONE_UPPER)))
 #endif
   {
+    if (modeManagerInApControlMode()) return;
     parola.displayAnimate();
     nonBlockingDelay(H_SCROLL_SPEED);
   }
@@ -109,6 +115,7 @@ void displayHorzMessage(const char* msg) {
   while (!(parola.getZoneStatus(ZONE_LOWER) && parola.getZoneStatus(ZONE_UPPER)))
 #endif
   {
+    if (modeManagerInApControlMode()) return;
     parola.displayAnimate();
     nonBlockingDelay(H_SCROLL_SPEED / 10);
   }

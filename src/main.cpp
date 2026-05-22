@@ -9,6 +9,7 @@
 #include <DallasTemperature.h>
 #include <ArduinoJson.h>
 #include <Ticker.h>
+#include <SPI.h>
 #include "globals.h"
 #include "Font_Data.h"
 #include "Parola_Display.h"
@@ -22,6 +23,7 @@
 #include "Ticker_Manager.h"
 #include "Init_Manager.h"
 #include "MatrixClock_Config.h"
+#include "Mode_Manager.h"
 
 // ============================================================================
 // RTC INSTANCE
@@ -50,10 +52,139 @@ PubSubClient mqttClient(espClient);
 // ============================================================================
 // SETUP
 // ============================================================================
+namespace {
+const ModeManagerConfig kPassiveModeManagerConfig = {
+  3000,
+  1200,
+  4000,
+  5000
+};
+
+void serviceModeManagerPassiveDiagnostics()
+{
+  static bool s_lastConfirmPromptActive = false;
+  static uint32_t s_lastButtonSnapshotMs = 0;
+
+  modeManagerServiceButtonDiagnostics();
+  modeManagerService();
+
+  if ((millis() - s_lastButtonSnapshotMs) >= 2000)
+  {
+    s_lastButtonSnapshotMs = millis();
+    Serial.print("[BTN-SNAPSHOT] SEL=");
+    Serial.print(digitalRead(PB_SEL_PIN));
+    Serial.print(" DEC=");
+    Serial.print(digitalRead(PB_DEC_PIN));
+    Serial.print(" INC=");
+    Serial.print(digitalRead(PB_INC_PIN));
+    Serial.print(" CNL=");
+    Serial.print(digitalRead(PB_CNL_PIN));
+    Serial.print(" MEN=");
+    Serial.println(digitalRead(PB_MEN_PIN));
+  }
+
+  bool confirmActive = modeManagerIsConfirmPromptActive();
+  if (confirmActive != s_lastConfirmPromptActive)
+  {
+    s_lastConfirmPromptActive = confirmActive;
+    Serial.print("[MODE] confirmPrompt=");
+    Serial.println(confirmActive ? 1 : 0);
+  }
+}
+
+void handleModeEntryEvents()
+{
+  MatrixClockMode enteredMode;
+  if (!modeManagerConsumeModeEntryEvent(enteredMode))
+  {
+    return;
+  }
+
+  Serial.print("[MODE] entry mode=");
+  Serial.println(modeManagerGetModeName(enteredMode));
+
+  if (enteredMode == MATRIXCLOCK_MODE_AP_SETUP)
+  {
+    displayHorzMessage("AP Setup");
+  }
+  else if (enteredMode == MATRIXCLOCK_MODE_RECOVERY)
+  {
+    displayHorzMessage("Recovery");
+  }
+}
+
+void serviceApModeDisplay()
+{
+  static bool s_apDisplayInitialized = false;
+
+  auto startApBanner = []() {
+#if DISPLAY_CONFIG == DISPLAY1X4
+    parola.displayZoneText(ZONE_SINGLE, "AP SETUP", PA_CENTER, H_SCROLL_SPEED, 0, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+#elif DISPLAY_CONFIG == DISPLAY2X8
+    parola.setFont(ZONE_LOWER, BigFontLower);
+    parola.setFont(ZONE_UPPER, BigFontUpper);
+    parola.displayZoneText(ZONE_LOWER, "AP SETUP", PA_CENTER, H_SCROLL_SPEED, 0, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+    parola.displayZoneText(ZONE_UPPER, "AP SETUP", PA_CENTER, H_SCROLL_SPEED, 0, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+#endif
+    parola.synchZoneStart();
+  };
+
+  if (!modeManagerInApControlMode())
+  {
+    s_apDisplayInitialized = false;
+    return;
+  }
+
+  if (!s_apDisplayInitialized)
+  {
+    parola.displayClear();
+    startApBanner();
+    s_apDisplayInitialized = true;
+  }
+
+#if DISPLAY_CONFIG == DISPLAY1X4
+  if (parola.getZoneStatus(ZONE_SINGLE))
+#elif DISPLAY_CONFIG == DISPLAY2X8
+  if (parola.getZoneStatus(ZONE_LOWER) && parola.getZoneStatus(ZONE_UPPER))
+#endif
+  {
+    startApBanner();
+  }
+
+  parola.displayAnimate();
+}
+
+void initializeDisplayBusState()
+{
+  pinMode(CS_PIN, OUTPUT);
+  digitalWrite(CS_PIN, HIGH);
+  pinMode(CLK_PIN, OUTPUT);
+  digitalWrite(CLK_PIN, LOW);
+  pinMode(DATA_PIN, OUTPUT);
+  digitalWrite(DATA_PIN, LOW);
+  SPI.begin(CLK_PIN, -1, DATA_PIN, CS_PIN);
+  delay(5);
+}
+
+void normalizeDisplayState()
+{
+  MD_MAX72XX *gfx = parola.getGraphicObject();
+  if (gfx == nullptr)
+  {
+    return;
+  }
+
+  gfx->control(MD_MAX72XX::TEST, MD_MAX72XX::OFF);
+  gfx->control(MD_MAX72XX::SHUTDOWN, MD_MAX72XX::OFF);
+}
+}
+
 void setup()
 {
   Serial.begin(115200);
   nonBlockingDelay(2000);
+
+  initializeDisplayBusState();
 
   fileNameParser(projectNameFromFileName, projectVersionFromFileName, compileDateFromFileName, compileTimeFromFileName);
   Serial.println("\n##########################\nS T A R T I N G   S E T U P ");
@@ -68,6 +199,9 @@ void setup()
   Serial.println();
 
   parola.begin(MAX_ZONES_FULL + MAX_ZONES_HALF);
+  normalizeDisplayState();
+  parola.setIntensity(3);
+  parola.displayClear();
 
 #if DISPLAY_CONFIG == DISPLAY1X4
   parola.setZone(ZONE_SINGLE, 0, ZONE_SIZE_FULL - 1);
@@ -108,6 +242,10 @@ void setup()
   initializeDispParam();
   intializeTemperatures();
   initializeGPIOPins();
+  modeManagerBegin(kPassiveModeManagerConfig);
+  modeManagerLogButtonPinMapping();
+  Serial.print("[MODE] initialized in mode=");
+  Serial.println(modeManagerGetModeName(modeManagerGetMode()));
   initializeGlobalVariables();
 
   MatrixClockConfigInitResult configInitResult = {false, false};
@@ -129,6 +267,7 @@ void setup()
         Serial.println("[CONFIG] WARNING: Bootstrap defaults loaded but NVS seed write failed");
       }
     }
+
   }
   else
   {
@@ -237,8 +376,9 @@ void setup()
   digitalClockDisplay();
 
   tickerBlinkerInstance.attach_ms(500, tickerBlinkerISR, BLU_LED_PIN);
-  tickerMqttKeepAliveInstance.attach_ms(3000, tickerKeepAliveMqttISR);
   tickerTempStartInstance.attach_ms(30000, tickerNonBlockingTempStartISR);
+
+  modeManagerSetBackgroundPollingEnabled(true);
 
   Serial.println("S E T U P   C O M P L E T E");
 }
@@ -248,6 +388,35 @@ void setup()
 // ============================================================================
 void loop()
 {
+  static uint32_t lastDisplayNormalizeMs = 0;
+  static uint32_t lastApModeHeartbeatMs = 0;
+
+  serviceModeManagerPassiveDiagnostics();
+  handleModeEntryEvents();
+
+  mqttServiceKeepAlive();
+
+  if (millis() - lastDisplayNormalizeMs >= 1000)
+  {
+    lastDisplayNormalizeMs = millis();
+    normalizeDisplayState();
+  }
+
+  if (modeManagerInApControlMode())
+  {
+    serviceApModeDisplay();
+
+    if (millis() - lastApModeHeartbeatMs >= 5000)
+    {
+      lastApModeHeartbeatMs = millis();
+      Serial.print("[MODE] active=");
+      Serial.println(modeManagerGetModeName(modeManagerGetMode()));
+    }
+
+    nonBlockingDelay(50);
+    return;
+  }
+
   char displayString[10];
   parola.synchZoneStart();
   parola.displayAnimate();
@@ -279,6 +448,11 @@ void loop()
 
     for (int paramIndex = 1; paramIndex < DISP_PARAM_TOTAL_COUNT; paramIndex++)
     {
+      if (modeManagerInApControlMode())
+      {
+        break;
+      }
+
       if (!dispParam[paramIndex].enabled || !dispParam[paramIndex].dispReady || dispParam[paramIndex].groupMode != 0)
         continue;
 
@@ -300,6 +474,11 @@ void loop()
       if (dispParam[paramIndex].lastReceivedUpdate + MQTT_TELE_TOPIC_TIMEOUT_MS < millis())
       {
         dispParam[paramIndex].dispReady = false;
+      }
+
+      if (modeManagerInApControlMode())
+      {
+        break;
       }
     }
 

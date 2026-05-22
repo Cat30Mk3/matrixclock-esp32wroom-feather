@@ -3,6 +3,11 @@
 #include "JSON_Handler.h"
 #include "Ticker_Manager.h"
 
+namespace {
+const uint32_t kKeepAlivePublishMs = 25000;
+uint32_t s_lastKeepAlivePublishMs = 0;
+}
+
 ICACHE_RAM_ATTR void callback(char* topic, byte* payload, unsigned int length) {
   char strPayload[1536];
   char compareMsg[100];
@@ -19,8 +24,6 @@ ICACHE_RAM_ATTR void callback(char* topic, byte* payload, unsigned int length) {
   for (int i = 0; i < length; i++) {
     strPayload[i] = (char)payload[i];
   }
-  parola.synchZoneStart();
-  parola.displayAnimate();
 
   strPayload[length] = '\0';
   if (strlen(strPayload) > 0)payloadFound = true;
@@ -97,6 +100,7 @@ bool newMqttConnect(void) {
         }
 
         Serial.println("[newMqttConnect] mqtt successfullt connected!!");
+        s_lastKeepAlivePublishMs = 0;
         tickerBlinkerInstance.detach();
         digitalWrite(BLU_LED_PIN, HIGH);
         mqttAlive = true;
@@ -109,4 +113,32 @@ bool newMqttConnect(void) {
     return false;
   }
   return true;
+}
+
+void mqttServiceKeepAlive(void) {
+  if (!mqttClient.connected()) {
+    mqttAlive = false;
+    return;
+  }
+
+  mqttAlive = mqttClient.loop();
+
+  if ((millis() - s_lastKeepAlivePublishMs) < kKeepAlivePublishMs) {
+    return;
+  }
+
+  s_lastKeepAlivePublishMs = millis();
+
+  char topicBuild[64];
+  snprintf(topicBuild, sizeof(topicBuild), "stat/matrixClock/keepalive");
+
+  char payload[24];
+  snprintf(payload, sizeof(payload), "%lu", static_cast<unsigned long>(millis() / 1000UL));
+
+  if (mqttClient.publish(topicBuild, payload, false)) {
+    Serial.print("[MQTT] keepalive published to ");
+    Serial.println(topicBuild);
+  } else {
+    Serial.println("[MQTT] keepalive publish failed");
+  }
 }

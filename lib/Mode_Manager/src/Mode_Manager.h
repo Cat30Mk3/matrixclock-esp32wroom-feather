@@ -17,6 +17,8 @@ struct ModeManagerConfig {
 };
 
 void modeManagerBegin(const ModeManagerConfig &config);
+void modeManagerSetBackgroundPollingEnabled(bool enabled);
+bool modeManagerIsBackgroundPollingEnabled();
 bool modeManagerCheckBootRecoveryRequest();
 void modeManagerService();
 

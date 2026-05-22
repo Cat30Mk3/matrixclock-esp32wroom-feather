@@ -1,6 +1,8 @@
 #include "Ticker_Manager.h"
 #include "globals.h"
 #include "DS18B20_Manager.h"
+#include "Mode_Manager.h"
+#include "MQTT_Manager.h"
 
 ICACHE_RAM_ATTR void tickerBlinkerISR(int pinToBlink) {
   bool pinValue = digitalRead(pinToBlink);
@@ -15,12 +17,17 @@ ICACHE_RAM_ATTR void nonBlockingDelay(uint32_t msOfDelay) {
   delayFlag = true;
   tickerDelayInstance.once_ms(msOfDelay, tickerDelayISR);
   while (delayFlag) {
+    if (modeManagerIsBackgroundPollingEnabled()) {
+      modeManagerServiceButtonDiagnostics();
+      modeManagerService();
+    }
+    mqttServiceKeepAlive();
     yield();
   }
 }
 
 ICACHE_RAM_ATTR void tickerKeepAliveMqttISR(void) {
-  mqttAlive = mqttClient.loop();
+  // Keep ISR lean; network stack work must run in foreground context.
 }
 
 ICACHE_RAM_ATTR void resetDisplayISR(void) {

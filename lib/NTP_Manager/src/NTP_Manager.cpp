@@ -5,6 +5,9 @@
 WiFiUDP Udp;
 const int NTP_PACKET_SIZE = 48;
 byte packetBuffer[NTP_PACKET_SIZE];
+const uint8_t kNtpMaxAttempts = 3;
+const uint32_t kNtpAttemptTimeoutMs = 3000;
+const uint32_t kNtpInterAttemptDelayMs = 300;
 
 void digitalClockDisplay() {
   Serial.print(hour());
@@ -29,28 +32,46 @@ void printDigits(int digits) {
 time_t getNtpTime() {
   IPAddress ntpServerIP;
 
-  while (Udp.parsePacket() > 0);
-  Serial.println("Transmit NTP Request");
-  WiFi.hostByName(ntpServerName, ntpServerIP);
-  Serial.print(ntpServerName);
-  Serial.print(": ");
-  Serial.println(ntpServerIP);
-  sendNTPpacket(ntpServerIP);
-  uint32_t beginWait = millis();
-  while (millis() - beginWait < 3000) {
-    int size = Udp.parsePacket();
-    if (size >= NTP_PACKET_SIZE) {
-      Serial.println("Receive NTP Response");
-      Udp.read(packetBuffer, NTP_PACKET_SIZE);
-      unsigned long secsSince1900;
-      secsSince1900 = (unsigned long)packetBuffer[40] << 24;
-      secsSince1900 |= (unsigned long)packetBuffer[41] << 16;
-      secsSince1900 |= (unsigned long)packetBuffer[42] << 8;
-      secsSince1900 |= (unsigned long)packetBuffer[43];
-      displayHorzMessage("NTP Up");
-      return secsSince1900 - 2208988800UL + timeZone * SECS_PER_HOUR;
+  for (uint8_t attempt = 1; attempt <= kNtpMaxAttempts; ++attempt) {
+    while (Udp.parsePacket() > 0) {
+      // Drain any stale packets before a fresh request.
     }
+
+    Serial.print("Transmit NTP Request #");
+    Serial.println(attempt);
+
+    if (!WiFi.hostByName(ntpServerName, ntpServerIP)) {
+      Serial.println("NTP DNS lookup failed");
+      delay(kNtpInterAttemptDelayMs);
+      continue;
+    }
+
+    Serial.print(ntpServerName);
+    Serial.print(": ");
+    Serial.println(ntpServerIP);
+    sendNTPpacket(ntpServerIP);
+
+    uint32_t beginWait = millis();
+    while (millis() - beginWait < kNtpAttemptTimeoutMs) {
+      int size = Udp.parsePacket();
+      if (size >= NTP_PACKET_SIZE) {
+        Serial.println("Receive NTP Response");
+        Udp.read(packetBuffer, NTP_PACKET_SIZE);
+        unsigned long secsSince1900;
+        secsSince1900 = (unsigned long)packetBuffer[40] << 24;
+        secsSince1900 |= (unsigned long)packetBuffer[41] << 16;
+        secsSince1900 |= (unsigned long)packetBuffer[42] << 8;
+        secsSince1900 |= (unsigned long)packetBuffer[43];
+        displayHorzMessage("NTP Up");
+        return secsSince1900 - 2208988800UL + timeZone * SECS_PER_HOUR;
+      }
+      yield();
+    }
+
+    Serial.println("No NTP Response this attempt");
+    delay(kNtpInterAttemptDelayMs);
   }
+
   Serial.println("No NTP Response :-(");
   displayHorzMessage("NTP Dn");
   return 0;
