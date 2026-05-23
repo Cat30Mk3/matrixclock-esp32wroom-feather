@@ -41,7 +41,7 @@ static uint32_t       s_exitScheduledMs = 0;
 
 static char s_flashMessage[80] = {0};
 
-static APPortalCallbacks s_callbacks = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
+static APPortalCallbacks s_callbacks = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
 
 // ─── Forward declarations ─────────────────────────────────────────────────────
 void renderLoginPage(const String &message);
@@ -144,7 +144,7 @@ static const char kPageCss[] =
   "font-size:1em;font-family:inherit;cursor:pointer;margin:5px 0;color:#fff;text-align:center;"
   "text-decoration:none;box-sizing:border-box;}"
   ".bn{background:#1fa3ec;}.bg{background:#4caf50;}"
-  ".br{background:#e53935;}.bk{background:#888;}"
+  ".br{background:#e53935;}.bk{background:#888;}.bo{background:#ff9800;}"
   ".msg{background:#fff3cd;border:1px solid #ffc107;padding:8px;border-radius:4px;"
   "margin:6px 0;color:#555;font-size:.9em;}"
   ".ok{background:#d4edda;border-color:#28a745;color:#155724;}"
@@ -271,6 +271,9 @@ void renderMenuPage() {
             String(s_pages[i].pageId) + "\"'>" +
             htmlEscape(String(s_pages[i].title)) + "</button>";
   }
+
+  html += F("<h2>Reset</h2>");
+  html += F("<button type='button' class='btn bo' onclick='location.href=\"/defaults\"'>Load Factory Defaults</button>");
 
   html += F("<h2>Session</h2>");
   html += F("<button type='button' class='btn bg' onclick='location.href=\"/exit/save\"'>Save &amp; Exit</button>");
@@ -474,6 +477,17 @@ void handleLogout() {
   sendRedirect("/");
 }
 
+void handleLoadDefaults() {
+  recordActivity();
+  if (!ensureAuthenticated()) return;
+  if (s_callbacks.loadDefaults) {
+    s_callbacks.loadDefaults(s_callbacks.context);
+  }
+  s_hasUnsavedChanges = true;
+  setFlash("Factory defaults loaded \xe2\x80\x94 review settings, then Save & Exit to apply or Cancel & Exit to discard.");
+  sendRedirect("/menu");
+}
+
 // Captive portal: redirect OS connectivity-check requests to the portal
 void handleCaptiveRedirect() {
   if (!s_server) return;
@@ -524,6 +538,7 @@ bool apPortalStartServer(uint16_t port, bool enableDns) {
   s_server->on("/exit/save",   HTTP_GET,  handleExitSave);
   s_server->on("/exit/cancel", HTTP_GET,  handleExitCancel);
   s_server->on("/logout",      HTTP_GET,  handleLogout);
+  s_server->on("/defaults",    HTTP_GET,  handleLoadDefaults);
 
   // Per-page routes — registered per page at start time
   for (size_t i = 0; i < s_pageCount; ++i) {

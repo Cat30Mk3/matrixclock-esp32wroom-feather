@@ -118,7 +118,10 @@ void stopApSetupRuntime()
   WiFi.softAPdisconnect(true);
   WiFi.mode(WIFI_STA);
   s_apRuntimeActive = false;
-  Serial.println("[AP] stopped");
+  // Reload from NVS to discard any unsaved portal edits (e.g. inactivity timeout mid-edit)
+  MatrixClockConfigInitResult reloadResult = {false, false};
+  matrixClockConfigInitializeRuntimeConfig(reloadResult);
+  Serial.println("[AP] stopped; config reloaded from NVS");
 }
 
 void serviceModeManagerPassiveDiagnostics()

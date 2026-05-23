@@ -40,6 +40,8 @@ typedef struct {
 
 // Declare configDb - defined in globals.cpp (includes secrets.h)
 extern configDb_t configDb;
+// Factory defaults — compile-time snapshot captured before NVS overwrite.
+extern const configDb_t g_factoryDefaults;
 
 // ============================================================================
 // COMPILER MACROS - DISPLAY CONFIGURATION

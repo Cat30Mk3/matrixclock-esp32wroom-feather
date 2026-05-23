@@ -124,6 +124,12 @@ bool portalSetFieldValue(void *context, const char *fieldId, const char *value) 
   return matrixClockConfigSetFieldValue(fieldId, value);
 }
 
+bool portalLoadDefaults(void *context) {
+  (void)context;
+  matrixClockConfigLoadFactoryDefaults();
+  return true;
+}
+
 bool portalGetStatus(void *context, APPortalStatus &status) {
   (void)context;
   static char sApSsid[44] = {0};
@@ -207,7 +213,8 @@ bool matrixClockConfigRegisterPortalContracts() {
     portalApplyConfig,
     portalGetFieldValue,
     portalSetFieldValue,
-    portalGetStatus
+    portalGetStatus,
+    portalLoadDefaults
   };
   apPortalSetCallbacks(callbacks);
 
@@ -299,7 +306,7 @@ bool matrixClockConfigIsSchemaCompatible(uint16_t storedVersion) {
 
 void matrixClockConfigLoadBootstrapDefaults(MatrixClockRuntimeConfig &outConfig) {
   outConfig.schemaVersion = MATRIXCLOCK_CONFIG_SCHEMA_VERSION;
-  outConfig.configDb = configDb;
+  outConfig.configDb = g_factoryDefaults;
 }
 
 bool matrixClockConfigInitializeRuntimeConfig(MatrixClockConfigInitResult &outResult) {
@@ -320,6 +327,13 @@ bool matrixClockConfigInitializeRuntimeConfig(MatrixClockConfigInitResult &outRe
 
 const MatrixClockRuntimeConfig &matrixClockConfigGetActiveRuntimeConfig() {
   return g_matrixClockRuntimeConfig;
+}
+
+void matrixClockConfigLoadFactoryDefaults() {
+  g_matrixClockRuntimeConfig.configDb = g_factoryDefaults;
+  g_matrixClockRuntimeConfig.schemaVersion = MATRIXCLOCK_CONFIG_SCHEMA_VERSION;
+  applyRuntimeConfigToLegacyGlobals(g_matrixClockRuntimeConfig);
+  Serial.println("[CONFIG] Factory defaults loaded into active config (not yet saved to NVS)");
 }
 
 void matrixClockConfigSetActiveRuntimeConfig(const MatrixClockRuntimeConfig &runtimeConfig) {

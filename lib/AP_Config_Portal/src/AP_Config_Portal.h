@@ -58,6 +58,7 @@ typedef bool (*APApplyConfigCallback)(void *context);
 typedef bool (*APGetFieldValueCallback)(void *context, const char *fieldId, char *outValue, size_t outValueLen);
 typedef bool (*APSetFieldValueCallback)(void *context, const char *fieldId, const char *value);
 typedef bool (*APGetStatusCallback)(void *context, APPortalStatus &status);
+typedef bool (*APLoadDefaultsCallback)(void *context);
 
 struct APPortalCallbacks {
   void *context;
@@ -67,6 +68,7 @@ struct APPortalCallbacks {
   APGetFieldValueCallback getFieldValue;
   APSetFieldValueCallback setFieldValue;
   APGetStatusCallback getStatus;
+  APLoadDefaultsCallback loadDefaults;
 };
 
 void apPortalBegin();

@@ -14,6 +14,8 @@
   #error "Missing secrets header. Add include/secrets_template.h (public) or include/secrets.h (private)."
 #endif
 
+// Factory defaults — compile-time values from secrets.h, captured before NVS overwrites configDb.
+const configDb_t g_factoryDefaults = configDb;
 
 // ============================================================================
 // DISPLAY PARAMETER ARRAY
