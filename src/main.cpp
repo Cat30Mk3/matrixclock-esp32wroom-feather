@@ -515,12 +515,13 @@ void loop()
   if (!modeManagerInApControlMode() && s_apRuntimeActive)
   {
     stopApSetupRuntime();
-    // Cancel & Exit path: AP mode dropped the STA connection, so reconnect explicitly.
-    // (Save & Exit always reboots, so it never reaches here.)
-    if (configDb.wifiEnabled)
+    // Safety net for Cancel & Exit: ESP32 WIFI_AP_STA normally maintains the
+    // existing STA connection, so these are usually no-ops. If STA did drop
+    // (edge case), restore WiFi and MQTT without requiring a reboot.
+    if (configDb.wifiEnabled && WiFi.status() != WL_CONNECTED)
     {
       newWiFiConnect(true);
-      if (configDb.mqttEnabled && WiFi.status() == WL_CONNECTED)
+      if (configDb.mqttEnabled && WiFi.status() == WL_CONNECTED && !mqttAlive)
         newMqttConnect();
     }
   }
