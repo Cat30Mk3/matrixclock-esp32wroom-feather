@@ -515,6 +515,14 @@ void loop()
   if (!modeManagerInApControlMode() && s_apRuntimeActive)
   {
     stopApSetupRuntime();
+    // Cancel & Exit path: AP mode dropped the STA connection, so reconnect explicitly.
+    // (Save & Exit always reboots, so it never reaches here.)
+    if (configDb.wifiEnabled)
+    {
+      newWiFiConnect(true);
+      if (configDb.mqttEnabled && WiFi.status() == WL_CONNECTED)
+        newMqttConnect();
+    }
   }
 
   if (configDb.mqttEnabled && configDb.wifiEnabled) {
