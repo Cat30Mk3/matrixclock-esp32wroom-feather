@@ -8,7 +8,8 @@ enum APFieldType {
   AP_FIELD_PASSWORD,
   AP_FIELD_NUMBER,
   AP_FIELD_TOGGLE,
-  AP_FIELD_SELECT
+  AP_FIELD_SELECT,
+  AP_FIELD_DATETIME  // renders as <input type="datetime-local">, value format: YYYY-MM-DDTHH:MM
 };
 
 // Staged display state — advances as user progresses through setup flow
@@ -70,7 +71,7 @@ struct APPortalCallbacks {
 
 void apPortalBegin();
 void apPortalEnd();
-bool apPortalStartServer(uint16_t port = 80);
+bool apPortalStartServer(uint16_t port = 80, bool enableDns = true);
 void apPortalStopServer();
 void apPortalService();
 bool apPortalIsServerRunning();
@@ -85,7 +86,7 @@ bool apPortalShouldExit();
 bool apPortalExitWasSave();
 void apPortalClearExitRequest();
 
-bool apPortalRegisterPage(const char *pageId, const char *title);
+bool apPortalRegisterPage(const char *pageId, const char *title, const char *submitLabel = nullptr);
 bool apPortalRegisterField(const APFieldDefinition &field);
 void apPortalSetCallbacks(const APPortalCallbacks &callbacks);
 

@@ -1,8 +1,26 @@
 #include "Time_Manager.h"
 #include "globals.h"
 #include <RTClib.h>
+#include <time.h>
 
 extern RTC_DS3231 rtc;
+
+// ─── Timezone table (POSIX TZ strings) — Canadian zones per product spec ────────
+const TzTableEntry kTimezoneTable[] = {
+  {"AST/ADT (Atlantic)",  "AST4ADT,M3.2.0,M11.1.0"},   // idx 0 — UTC-4/UTC-3
+  {"EST/EDT (Eastern)",   "EST5EDT,M3.2.0,M11.1.0"},    // idx 1 — UTC-5/UTC-4
+  {"CST/CDT (Central)",   "CST6CDT,M3.2.0,M11.1.0"},    // idx 2 — UTC-6/UTC-5
+  {"MST/MDT (Mountain)",  "MST7MDT,M3.2.0,M11.1.0"},    // idx 3 — UTC-7/UTC-6
+  {"PST/PDT (Pacific)",   "PST8PDT,M3.2.0,M11.1.0"},    // idx 4 — UTC-8/UTC-7
+  {"UTC",                 "UTC0"},                        // idx 5
+};
+const uint8_t kTimezoneTableCount = sizeof(kTimezoneTable) / sizeof(kTimezoneTable[0]);
+
+void applyTimezone(uint8_t idx) {
+  if (idx >= kTimezoneTableCount) idx = 0;
+  setenv("TZ", kTimezoneTable[idx].posixStr, 1);
+  tzset();
+}
 
 time_t compileTime(void) {
   const time_t FUDGE(10);
@@ -35,32 +53,35 @@ void printDateTime(time_t t, const char *tz) {
 
 void getCurrentTime(char *timeStr, boolean hr24) {
   time_t utc = now();
-   time_t local = myTZ.toLocal(utc);
-  int currentHour = hour(local);
-  int currentMinute = minute(local);
+  struct tm tmLocal;
+  localtime_r(&utc, &tmLocal);
+  int currentHour   = tmLocal.tm_hour;
+  int currentMinute = tmLocal.tm_min;
   boolean PM = false;
   if (currentHour > 12) PM = true;
   if (hr24)
     sprintf(timeStr, "%02d:%02d", currentHour, currentMinute);
   else {
-    if (PM)currentHour = currentHour - 12;
+    if (PM) currentHour = currentHour - 12;
     sprintf(timeStr, "%2d:%02d", currentHour, currentMinute);
   }
 }
 
 void getCurrentDate(char *dateStr) {
   time_t utc = now();
-  time_t local = myTZ.toLocal(utc);
+  struct tm tmLocal;
+  localtime_r(&utc, &tmLocal);
   char m[4];
-  strlcpy(m, monthShortStr(month(local)), sizeof(m));
-  int currentDay = day(local);
-  sprintf(dateStr, "%s %d", m, currentDay);
+  strlcpy(m, monthShortStr(tmLocal.tm_mon + 1), sizeof(m));
+  sprintf(dateStr, "%s %d", m, tmLocal.tm_mday);
 }
 
 void getCurrentDOW(char *dateStr) {
   time_t utc = now();
-  time_t local = myTZ.toLocal(utc);
-  sprintf(dateStr, "%s", dayShortStr(weekday(local)));
+  struct tm tmLocal;
+  localtime_r(&utc, &tmLocal);
+  // tm_wday: 0=Sun..6=Sat; TimeLib dayShortStr: 1=Sun..7=Sat
+  sprintf(dateStr, "%s", dayShortStr(tmLocal.tm_wday + 1));
 }
 
 void customSetTimeFromRTC(void) {

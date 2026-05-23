@@ -90,6 +90,9 @@ bool modeManagerIsBackgroundPollingEnabled() {
 }
 
 bool modeManagerCheckBootRecoveryRequest() {
+  // Fast path: if Menu is not already held, no recovery combo is possible.
+  if (!isPressed(PB_MEN_PIN)) return false;
+
   const uint32_t startedAtMs = millis();
   uint32_t comboHoldStartMs = 0;
 

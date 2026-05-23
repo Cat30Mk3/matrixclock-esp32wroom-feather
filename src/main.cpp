@@ -170,7 +170,8 @@ void handleModeEntryEvents()
   }
   else if (enteredMode == MATRIXCLOCK_MODE_RECOVERY)
   {
-    Serial.println("[MODE] recovery mode entered");
+    Serial.println("[MODE] recovery mode entered - starting AP portal");
+    startApSetupRuntime();
   }
   else if (enteredMode == MATRIXCLOCK_MODE_NORMAL)
   {
@@ -386,6 +387,15 @@ void setup()
     Serial.println("[CONFIG] WARNING: AP portal schema registration failed");
   }
 
+  // Boot recovery: Menu+Select held through Reset forces AP mode, skipping network startup.
+  if (modeManagerCheckBootRecoveryRequest()) {
+    Serial.println("[BOOT] Recovery combo detected - skipping network startup");
+    displayHorzMessage("Recovery..");
+    modeManagerSetBackgroundPollingEnabled(true);
+    Serial.println("S E T U P   C O M P L E T E  (recovery)");
+    return;
+  }
+
   // Scan I2C bus for devices
   Serial.println("\nScanning I2C bus for devices...");
   Wire.begin();
@@ -459,12 +469,15 @@ void setup()
     displayHorzMessage("MQTT Off");
   }
 
-  displayHorzMessage("Starting NTP..");
-  Udp.begin(localPort);
-  // Serial.println("waiting for sync");
-  delay(2000);
-  setSyncProvider(getNtpTime);
-  setSyncInterval(24 * 60 * 60);
+  if (configDb.wifiEnabled && g_matrixClockRuntimeConfig.configDb.wifiEnabled) {
+    displayHorzMessage("Starting NTP..");
+    Udp.begin(localPort);
+    delay(2000);
+    setSyncProvider(getNtpTime);
+    setSyncInterval(24 * 60 * 60);
+  } else {
+    Serial.println("[setup] NTP skipped - WiFi disabled, RTC is sole time source");
+  }
 
   if (rtcPresent)
   {
@@ -504,7 +517,9 @@ void loop()
     stopApSetupRuntime();
   }
 
-  mqttServiceKeepAlive();
+  if (configDb.mqttEnabled && configDb.wifiEnabled) {
+    mqttServiceKeepAlive();
+  }
 
   if (millis() - lastDisplayNormalizeMs >= 1000)
   {
@@ -568,19 +583,19 @@ void loop()
   if (parola.getZoneStatus(ZONE_LOWER) && parola.getZoneStatus(ZONE_UPPER))
 #endif
   {
-    time_t utc = now();
-    time_t local = myTZ.toLocal(utc);
-
     getCurrentDOW(dispParam[DISP_CURR_DOW].dispBuffer);
     getCurrentDate(dispParam[DISP_CURR_DATE].dispBuffer);
     dispParam[DISP_CURR_DOW].dispReady = true;
     dispParam[DISP_CURR_DATE].dispReady = true;
 
-    if (!mqttAlive)
+    if (configDb.mqttEnabled && configDb.wifiEnabled && WiFi.status() == WL_CONNECTED)
     {
-      Serial.println("ALERT - mqtt not connected");
-      if (newMqttConnect())
-        Serial.println("RESOLVED - mqtt successfully reconnected");
+      if (!mqttAlive)
+      {
+        Serial.println("ALERT - mqtt not connected");
+        if (newMqttConnect())
+          Serial.println("RESOLVED - mqtt successfully reconnected");
+      }
     }
 
     for (int paramIndex = 1; paramIndex < DISP_PARAM_TOTAL_COUNT; paramIndex++)

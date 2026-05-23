@@ -21,7 +21,9 @@ ICACHE_RAM_ATTR void nonBlockingDelay(uint32_t msOfDelay) {
       modeManagerServiceButtonDiagnostics();
       modeManagerService();
     }
-    mqttServiceKeepAlive();
+    if (configDb.mqttEnabled && configDb.wifiEnabled) {
+      mqttServiceKeepAlive();
+    }
     yield();
   }
 }

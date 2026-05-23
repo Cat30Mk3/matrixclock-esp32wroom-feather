@@ -1,13 +1,20 @@
 #include "MatrixClock_Config.h"
 #include "AP_Config_Portal.h"
 #include "Mode_Manager.h"
+#include "Time_Manager.h"
 #include <Preferences.h>
+#include <RTClib.h>
+#include <time.h>
+
+extern RTC_DS3231 rtc;
 
 namespace {
-// Size of the v1 configDb_t blob as stored in NVS — used for migration detection.
+// Size of v1 configDb_t blob — used for v1->v2 migration detection.
 static const size_t kV1ConfigDbSize = 570;
-// Build-time guard: all-char + bool fields → no padding expected on ESP32.
-static_assert(sizeof(configDb_t) == 724, "configDb_t size mismatch — check struct padding");
+// Size of v2 configDb_t blob — used for v2->v3 migration detection.
+static const size_t kV2ConfigDbSize = 724;
+// Build-time guard: all-char + bool + uint8 fields → no padding expected on ESP32.
+static_assert(sizeof(configDb_t) == 725, "configDb_t size mismatch — check struct padding");
 
 const char *kConfigNamespace = "mcfg";
 const char *kSchemaKey = "schema";
@@ -33,6 +40,19 @@ const char *kMappedFieldIds[] = {
   "mqtt_topic_stat"
 };
 
+// Ephemeral buffer for datetime-local input; set by setFieldValue, consumed by applyConfig.
+static char s_dtLocalBuf[17] = {0}; // "YYYY-MM-DDTHH:MM"
+
+// Timezone options for the portal datetime page select (values are string indices into kTimezoneTable).
+static const APFieldOption kTzOptions[] = {
+  {"0", "AST/ADT (Atlantic)"},
+  {"1", "EST/EDT (Eastern)"},
+  {"2", "CST/CDT (Central)"},
+  {"3", "MST/MDT (Mountain)"},
+  {"4", "PST/PDT (Pacific)"},
+  {"5", "UTC"},
+};
+
 bool copyToOutputBuffer(const char *source, char *outValue, size_t outValueLen) {
   if (outValue == nullptr || outValueLen == 0) {
     return false;
@@ -51,6 +71,7 @@ bool writeConfigField(char *destination, size_t destinationLen, const char *valu
 
 void applyRuntimeConfigToLegacyGlobals(const MatrixClockRuntimeConfig &runtimeConfig) {
   configDb = runtimeConfig.configDb;
+  applyTimezone(configDb.tzIndex);
 }
 
 bool portalLoadConfig(void *context) {
@@ -67,6 +88,29 @@ bool portalSaveConfig(void *context) {
 bool portalApplyConfig(void *context) {
   (void)context;
   applyRuntimeConfigToLegacyGlobals(g_matrixClockRuntimeConfig);
+
+  // If a dt_local value was staged by setFieldValue, perform the time set now.
+  if (s_dtLocalBuf[0] != '\0') {
+    int y = 0, mo = 0, d = 0, h = 0, mi = 0;
+    sscanf(s_dtLocalBuf, "%d-%d-%dT%d:%d", &y, &mo, &d, &h, &mi);
+    if (y > 2000) { // basic sanity
+      struct tm tmLocal = {};
+      tmLocal.tm_year  = y - 1900;
+      tmLocal.tm_mon   = mo - 1;
+      tmLocal.tm_mday  = d;
+      tmLocal.tm_hour  = h;
+      tmLocal.tm_min   = mi;
+      tmLocal.tm_isdst = -1; // let mktime resolve DST using the current TZ
+      time_t utcTime = mktime(&tmLocal);
+      if (utcTime != (time_t)-1) {
+        setTime((time_t)utcTime);
+        rtc.adjust(DateTime((uint32_t)utcTime));
+        matrixClockConfigPersistActiveRuntimeConfig(); // tzIndex already in configDb
+        Serial.printf("[CONFIG] Time set via portal: UTC epoch %lu\n", (unsigned long)utcTime);
+      }
+    }
+    s_dtLocalBuf[0] = '\0'; // consume
+  }
   return true;
 }
 
@@ -131,8 +175,12 @@ const APFieldDefinition kPortalFields[] = {
   {"mqtt", "mqtt_device_name_1", "MQTT Device Name #1", AP_FIELD_TEXT, 39, false, nullptr, 0},
   {"mqtt", "mqtt_device_name_2", "MQTT Device Name #2", AP_FIELD_TEXT, 39, false, nullptr, 0},
   {"mqtt", "mqtt_device_name_3", "MQTT Device Name #3", AP_FIELD_TEXT, 39, false, nullptr, 0},
-  {"mqtt", "mqtt_topic_cmd", "Lamp Command Topic", AP_FIELD_TEXT, 19, false, nullptr, 0},
-  {"mqtt", "mqtt_topic_stat", "Lamp Status Topic", AP_FIELD_TEXT, 19, false, nullptr, 0}
+  {"mqtt", "mqtt_topic_cmd",  "Lamp Command Topic", AP_FIELD_TEXT,   19, false, nullptr, 0},
+  {"mqtt", "mqtt_topic_stat", "Lamp Status Topic",  AP_FIELD_TEXT,   19, false, nullptr, 0},
+
+  // Date & Time page
+  {"datetime", "tz_index",  "Time Zone",        AP_FIELD_SELECT,   1, false, kTzOptions, sizeof(kTzOptions)/sizeof(kTzOptions[0])},
+  {"datetime", "dt_local",  "Date / Time (local)", AP_FIELD_DATETIME, 16, false, nullptr, 0},
 };
 }
 
@@ -144,8 +192,9 @@ MatrixClockRuntimeConfig g_matrixClockRuntimeConfig = {
 bool matrixClockConfigRegisterPortalContracts() {
   bool ok = true;
 
-  ok = apPortalRegisterPage("wifi", "WiFi Settings") && ok;
-  ok = apPortalRegisterPage("mqtt", "MQTT Settings") && ok;
+  ok = apPortalRegisterPage("wifi",     "WiFi Settings") && ok;
+  ok = apPortalRegisterPage("mqtt",     "MQTT Settings") && ok;
+  ok = apPortalRegisterPage("datetime", "Date & Time", "Set Time") && ok;
 
   for (size_t i = 0; i < (sizeof(kPortalFields) / sizeof(kPortalFields[0])); ++i) {
     ok = apPortalRegisterField(kPortalFields[i]) && ok;
@@ -185,10 +234,24 @@ bool matrixClockConfigLoadFromNvs(MatrixClockRuntimeConfig &outConfig) {
     if (readLen != kV1ConfigDbSize) return false;
     outConfig.configDb.wifiEnabled = true;
     outConfig.configDb.mqttEnabled = true;
+    outConfig.configDb.tzIndex     = 0; // default US Eastern
     strlcpy(outConfig.configDb.wifiHostname, "matrixClock", sizeof(outConfig.configDb.wifiHostname));
     outConfig.schemaVersion = MATRIXCLOCK_CONFIG_SCHEMA_VERSION;
-    matrixClockConfigSaveToNvs(outConfig); // auto-persist migrated v2
-    Serial.println("[CONFIG] NVS schema migrated v1 -> v2");
+    matrixClockConfigSaveToNvs(outConfig);
+    Serial.println("[CONFIG] NVS schema migrated v1 -> v3");
+    return true;
+  }
+
+  // V2 → V3 migration: tzIndex appended; load v2 blob, patch default, persist as v3.
+  if (storedVersion == 2 && storedLength == kV2ConfigDbSize) {
+    memset(&outConfig.configDb, 0, sizeof(configDb_t));
+    size_t readLen = prefs.getBytes(kConfigBlobKey, &outConfig.configDb, kV2ConfigDbSize);
+    prefs.end();
+    if (readLen != kV2ConfigDbSize) return false;
+    outConfig.configDb.tzIndex = 0; // default US Eastern
+    outConfig.schemaVersion = MATRIXCLOCK_CONFIG_SCHEMA_VERSION;
+    matrixClockConfigSaveToNvs(outConfig);
+    Serial.println("[CONFIG] NVS schema migrated v2 -> v3");
     return true;
   }
 
@@ -331,6 +394,19 @@ bool matrixClockConfigGetFieldValue(const char *fieldId, char *outValue, size_t 
   if (strcmp(fieldId, "mqtt_topic_stat") == 0) {
     return copyToOutputBuffer(g_matrixClockRuntimeConfig.configDb.lampStatTopic, outValue, outValueLen);
   }
+  if (strcmp(fieldId, "tz_index") == 0) {
+    char buf[4];
+    snprintf(buf, sizeof(buf), "%u", g_matrixClockRuntimeConfig.configDb.tzIndex);
+    return copyToOutputBuffer(buf, outValue, outValueLen);
+  }
+  if (strcmp(fieldId, "dt_local") == 0) {
+    // Return current local time pre-formatted for datetime-local input
+    time_t utc = now();
+    struct tm tmLocal;
+    localtime_r(&utc, &tmLocal);
+    strftime(outValue, outValueLen, "%Y-%m-%dT%H:%M", &tmLocal);
+    return true;
+  }
 
   return false;
 }
@@ -385,6 +461,16 @@ bool matrixClockConfigSetFieldValue(const char *fieldId, const char *value) {
     updated = writeConfigField(g_matrixClockRuntimeConfig.configDb.lampCmndTopic, sizeof(g_matrixClockRuntimeConfig.configDb.lampCmndTopic), value);
   } else if (strcmp(fieldId, "mqtt_topic_stat") == 0) {
     updated = writeConfigField(g_matrixClockRuntimeConfig.configDb.lampStatTopic, sizeof(g_matrixClockRuntimeConfig.configDb.lampStatTopic), value);
+  } else if (strcmp(fieldId, "tz_index") == 0) {
+    uint8_t idx = (uint8_t)atoi(value);
+    if (idx < kTimezoneTableCount) {
+      g_matrixClockRuntimeConfig.configDb.tzIndex = idx;
+      updated = true;
+    }
+  } else if (strcmp(fieldId, "dt_local") == 0) {
+    // Stage the datetime string; actual time-set happens in portalApplyConfig()
+    strlcpy(s_dtLocalBuf, value, sizeof(s_dtLocalBuf));
+    updated = true;
   }
 
   if (!updated) {

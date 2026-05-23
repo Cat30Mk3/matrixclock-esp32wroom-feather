@@ -26,5 +26,6 @@ configDb_t configDb = {
   "",              // password3
   "matrixClock",   // wifiHostname
   true,            // wifiEnabled
-  true             // mqttEnabled
+  true,           // mqttEnabled
+  1               // tzIndex (1 = EST/EDT Eastern)
 };

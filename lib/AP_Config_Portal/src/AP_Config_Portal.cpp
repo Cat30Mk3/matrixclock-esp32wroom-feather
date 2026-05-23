@@ -15,7 +15,7 @@ static const uint32_t kInactivityMs     = 300000UL; // 5 minutes
 static const uint32_t kPostExitDelayMs  =   2000UL; // delay after exit page is served
 
 // ─── Data structures ──────────────────────────────────────────────────────────
-struct RegisteredPage  { const char *pageId; const char *title; };
+struct RegisteredPage  { const char *pageId; const char *title; const char *submitLabel; };
 struct RegisteredField { APFieldDefinition field; };
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -137,7 +137,7 @@ static const char kPageCss[] =
   "fieldset{border:1px solid #ccc;border-radius:4px;padding:10px;margin:8px 0;}"
   "legend{font-weight:bold;color:#555;padding:0 6px;font-size:.9em;}"
   "label{display:block;font-size:.85em;color:#555;margin-bottom:2px;}"
-  "input[type=text],input[type=password],input[type=number]"
+  "input[type=text],input[type=password],input[type=number],input[type=datetime-local],select"
   "{width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;"
   "border-radius:4px;font-size:1em;margin-bottom:8px;}"
   ".btn{display:block;width:100%;padding:11px;border:0;border-radius:4px;"
@@ -188,6 +188,27 @@ String renderField(const APFieldDefinition &f, const String &value) {
     if (en) html += F(" checked");
     html += F("><label for='"); html += eid; html += F("'>"); html += lbl;
     html += F("</label></div>");
+    return html;
+  }
+
+  if (f.type == AP_FIELD_SELECT) {
+    html += F("<label for='"); html += eid; html += F("'>"); html += lbl; html += F("</label>");
+    html += F("<select id='"); html += eid; html += F("' name='"); html += eid; html += F("'>");
+    for (size_t i = 0; i < f.optionCount; ++i) {
+      const String optVal = htmlEscape(String(f.options[i].value));
+      html += F("<option value='"); html += optVal; html += F("'");
+      if (esc == optVal) html += F(" selected");
+      html += F(">"); html += htmlEscape(String(f.options[i].label)); html += F("</option>");
+    }
+    html += F("</select>");
+    return html;
+  }
+
+  if (f.type == AP_FIELD_DATETIME) {
+    html += F("<label for='"); html += eid; html += F("'>"); html += lbl; html += F("</label>");
+    html += F("<input type='datetime-local' id='"); html += eid;
+    html += F("' name='"); html += eid;
+    html += F("' value='"); html += esc; html += F("'>");
     return html;
   }
 
@@ -314,7 +335,12 @@ void renderConfigPage(const char *pageId) {
     html += F("<p style='color:#888;'>No fields registered for this page.</p>");
 
   html += F("</fieldset>");
-  html += F("<button type='submit' class='btn bg'>Apply</button>");
+  // Per-page submit button label (nullptr defaults to "Apply")
+  const char *btnLabel = nullptr;
+  for (size_t i = 0; i < s_pageCount; ++i)
+    if (strcmp(s_pages[i].pageId, pageId) == 0) { btnLabel = s_pages[i].submitLabel; break; }
+  if (!btnLabel || !btnLabel[0]) btnLabel = "Apply";
+  html += "<button type='submit' class='btn bg'>" + String(btnLabel) + "</button>";
   html += F("</form>");
   html += F("<button type='button' class='btn bn' onclick='location.href=\"/menu\"'>&#8592; Main Menu</button>");
   html += pageFoot();
@@ -581,12 +607,13 @@ bool apPortalShouldExit()       { return s_exitRequested; }
 bool apPortalExitWasSave()      { return s_exitWasSave; }
 void apPortalClearExitRequest() { s_exitRequested = false; s_exitWasSave = false; s_exitScheduledMs = 0; }
 
-bool apPortalRegisterPage(const char *pageId, const char *title) {
+bool apPortalRegisterPage(const char *pageId, const char *title, const char *submitLabel) {
   if (!hasText(pageId) || !hasText(title)) return false;
   if (s_pageCount >= kMaxPages)            return false;
   if (pageExists(pageId))                  return false;
-  s_pages[s_pageCount].pageId = pageId;
-  s_pages[s_pageCount].title  = title;
+  s_pages[s_pageCount].pageId      = pageId;
+  s_pages[s_pageCount].title       = title;
+  s_pages[s_pageCount].submitLabel = submitLabel;
   ++s_pageCount;
   return true;
 }

@@ -35,12 +35,6 @@ const char ntpServerName[] = "pool.ntp.org";
 const int timeZone = 0;
 unsigned int localPort = 8888;
 
-// US Eastern Time (EST/EDT)
-TimeChangeRule usEDT = {"EDT", Second, Sun, Mar, 2, -240};  // Eastern Daylight Time = UTC-4
-TimeChangeRule usEST = {"EST", First, Sun, Nov, 2, -300};   // Eastern Standard Time = UTC-5
-Timezone myTZ(usEDT, usEST);
-TimeChangeRule myTCR;
-
 // ============================================================================
 // PAROLA DISPLAY GLOBALS
 // ============================================================================

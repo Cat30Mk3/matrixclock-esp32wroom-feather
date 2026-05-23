@@ -7,7 +7,6 @@
 #include <MD_MAX72xx.h>
 #include <MD_Parola.h>
 #include <Ticker.h>
-#include <Timezone.h>
 #include <TimeLib.h>
 
 // ============================================================================
@@ -36,6 +35,7 @@ typedef struct {
   char wifiHostname[32];
   bool wifiEnabled;
   bool mqttEnabled;
+  uint8_t tzIndex;    // index into kTimezoneTable[] in Time_Manager
 } configDb_t;
 
 // Declare configDb - defined in globals.cpp (includes secrets.h)
@@ -185,8 +185,6 @@ extern char compileTimeFromFileName[12];
 extern const char ntpServerName[];
 extern const int timeZone;
 extern unsigned int localPort;
-extern Timezone myTZ;
-extern TimeChangeRule myTCR;
 
 // ============================================================================
 // GLOBAL VARIABLES - PAROLA DISPLAY
