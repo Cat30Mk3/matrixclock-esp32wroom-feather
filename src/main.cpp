@@ -77,7 +77,7 @@ void startApSetupRuntime()
   s_lastApStationCount = 0;
 
   WiFi.mode(WIFI_AP_STA);
-  const bool apStarted = WiFi.softAP(s_apSsid);
+  const bool apStarted = WiFi.softAP(s_apSsid, nullptr, 1, false, 1); // max 1 client
 
   apPortalBegin();
   const bool portalRegistered = matrixClockConfigRegisterPortalContracts();
