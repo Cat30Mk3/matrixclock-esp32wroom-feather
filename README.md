@@ -11,7 +11,40 @@ This is a PlatformIO-compatible version of the matrixClock project, migrated fro
 <img width="45%"  alt="IMG_0113" src="https://github.com/user-attachments/assets/6fabb513-ec90-4e7d-99e3-d90884cb1552" />
 </p>
 
-
+## Web based configure settings
+The matrix clock hosts a web based configuration site to set WiFi access, set date and time, and other customizations.
+When triggered, 
+(1) Trigger the WiFi Access Point
+    PRESS AND HOLD menu button push button on bck of the clock for aT LEAST 5 seconds.
+    THEN press the adjacent Cancel Button
+    The Access Point name "matrixClock-AP" will scroll across screen (timesout after x seconds)
+(2) Connect to the Access Point with a phone, tablet or laptop using WiFi.
+    Goto settings on your device and select WiFi settings
+    Select the "matrixClock-AP" ssid (no password required) .. it may take several seconds to appear.
+(3) Load Login Pin Entry Web Page
+    on some devices the "captive portal" entry page will automatically appear after a delay.
+    if it doesnt appear, open a browser (eg Chrome, or Safari) and enter 192.168.4.1
+    This IP will be scrolling across the display.
+(4) Login with Pin
+    Type in the random four number PIN that is scrolling across the screen.
+    Press enter.
+    The Main Configuration menu page will appear.
+(5) Navigate to configuration page and edit
+    Select the configuration page to edit: WiFi, MQTT, Date/Time,...
+    enter the required values:
+    WiFi allows for up to three SSID/Password Pairs (it will try one after the other)
+    Ensure "WiFi enabled" is checked to get the time from the internet (NTP)
+    "MQTT enabled" should not be checked unless you want custom published data.
+    Date and Time allows you to set the battery backed up Real Time Clock (RTC)
+    but only if "Wifi enabled" is not checked (otherwise RTC will sync to NTP - Network Time)
+(6) Confirm change
+    IN EVERY CASE, BEFORE YOU LEAVE THE EDIT PAGE, YOU MUST ACCEPT THE CHANGE OR IT WILL BE LOST.
+    EITHER ACCEPT OR EXIT WUTH OUT SAVING.
+(7) Save and Exit the configuration  .. or .. Cancel and Exit
+    SELDCT SAVE AND EXIT ... OR ... CANCEL AND EXIT TO RETUFN THE VLICK TO NORMSL MODE.
+(8) Load Factory settings will fill all edit screens with default values that can then be editted and saved.
+    This will overwrite any custom configurations if followed by Save and Exit.
+(8) Clock returns to normal mode
 
 ## Features
 - **LED Matrix Display**: Supports two display panel configurations: 1x4 (4) and 2x8 (16) 8x8 led matrix modules
