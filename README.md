@@ -11,7 +11,7 @@ This is a PlatformIO-compatible version of the matrixClock project, migrated fro
 <img width="45%"  alt="IMG_0113" src="https://github.com/user-attachments/assets/6fabb513-ec90-4e7d-99e3-d90884cb1552" />
 </p>
 
-### Web-Based Configuration Settings
+## Web-Based Configuration Settings
 
 The Matrix Clock hosts a web-based configuration site used to set WiFi access, date and time, MQTT options, and other customizations.
 
