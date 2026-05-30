@@ -50,6 +50,15 @@ extern const configDb_t g_factoryDefaults;
 #define DISPLAY2X8 1
 #define DISPLAY_CONFIG DISPLAY1X4  // <<< SELECT DISPLAY CONFIGURATION
 
+#define DEBUG_DISPLAY_TRACE 0
+#define DEBUG_DISPLAY_VERT_SCROLL_ASYNC 0
+#define DEBUG_DISABLE_TIME_INSERT_AFTER_VERTICAL 0
+#define DEBUG_DISABLE_DISPLAY_NORMALIZE 1
+#define DEBUG_LOOP_BREADCRUMBS 0
+#define DEBUG_DISABLE_LOOP_SYNCHZONESTART 1
+#define DEBUG_DISABLE_LOOP_DISPLAYANIMATE 1
+#define DEBUG_DISABLE_DISPLAY1X4_WIRED_TEMP_VERTICAL 0
+
 #define SWAP_DS18B20 1              // 0 for no swap, 1 for swap
 #define ONE_TEMP_IS_IN 1            // 0 for "ONE_TEMP_IS_OUT", 1 for "ONE_TEMP_IS_IN"
 
@@ -75,6 +84,7 @@ extern const configDb_t g_factoryDefaults;
   #define MAX_ZONES_HALF 4
   #define ZONE_SIZE_FULL 8
   #define ZONE_SIZE_HALF 4
+  #define ZONE_SINGLE 0
   #define ZONE_UPPER   0
   #define ZONE_LOWER   1
   #define ZONE_UP_LFT  2
@@ -221,6 +231,9 @@ extern Ticker tickerMqttKeepAliveInstance;
 extern Ticker tickerTempStartInstance;
 extern Ticker tickerTempGetInstance;
 extern volatile boolean delayFlag;
+extern volatile bool g_wiredTempStageReady[2];
+extern char g_wiredTempStageBuffer[2][30];
+extern volatile uint32_t g_wiredTempStageMillis[2];
 
 // ============================================================================
 // GLOBAL VARIABLES - ISR

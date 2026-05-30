@@ -65,6 +65,38 @@ bool s_apRuntimeActive = false;
 char s_apSsid[40] = "";           // stored for stage-1 display
 uint8_t s_lastApStationCount = 0; // tracks first client connection
 
+void serviceStagedWiredTemps()
+{
+  for (int index = 0; index < 2; index++)
+  {
+    bool ready = false;
+    uint32_t updateStamp = 0;
+    char stagedValue[30] = {0};
+
+    noInterrupts();
+    ready = g_wiredTempStageReady[index];
+    if (ready)
+    {
+      strncpy(stagedValue, g_wiredTempStageBuffer[index], sizeof(stagedValue) - 1);
+      stagedValue[sizeof(stagedValue) - 1] = '\0';
+      updateStamp = g_wiredTempStageMillis[index];
+      g_wiredTempStageReady[index] = false;
+    }
+    interrupts();
+
+    if (!ready)
+    {
+      continue;
+    }
+
+    const int paramIndex = DISP_CURR_WIRED_TEMP_IN + index;
+    strncpy(dispParam[paramIndex].dispBuffer, stagedValue, sizeof(dispParam[paramIndex].dispBuffer) - 1);
+    dispParam[paramIndex].dispBuffer[sizeof(dispParam[paramIndex].dispBuffer) - 1] = '\0';
+    dispParam[paramIndex].dispReady = true;
+    dispParam[paramIndex].lastReceivedUpdate = updateStamp;
+  }
+}
+
 void startApSetupRuntime()
 {
   if (s_apRuntimeActive)
@@ -512,6 +544,10 @@ void loop()
   static uint32_t lastDisplayNormalizeMs = 0;
   static uint32_t lastApModeHeartbeatMs = 0;
 
+#if DEBUG_LOOP_BREADCRUMBS
+  Serial.println("[LOOP] enter");
+#endif
+
   serviceModeManagerPassiveDiagnostics();
   handleModeEntryEvents();
 
@@ -536,7 +572,16 @@ void loop()
   if (millis() - lastDisplayNormalizeMs >= 1000)
   {
     lastDisplayNormalizeMs = millis();
+#if DEBUG_LOOP_BREADCRUMBS
+    Serial.println("[LOOP] display normalize tick");
+#endif
+#if !DEBUG_DISABLE_DISPLAY_NORMALIZE
     normalizeDisplayState();
+#else
+#if DEBUG_LOOP_BREADCRUMBS
+    Serial.println("[LOOP] display normalize skipped");
+#endif
+#endif
   }
 
   if (modeManagerInApControlMode())
@@ -581,9 +626,40 @@ void loop()
     return;
   }
 
+  serviceStagedWiredTemps();
+
   char displayString[10];
+#if DEBUG_LOOP_BREADCRUMBS
+  Serial.println("[LOOP] before synch/displayAnimate");
+#endif
+#if !DEBUG_DISABLE_LOOP_SYNCHZONESTART
   parola.synchZoneStart();
-  parola.displayAnimate();
+#else
+#if DEBUG_LOOP_BREADCRUMBS
+  Serial.println("[LOOP] synchZoneStart skipped");
+#endif
+#endif
+#if !DEBUG_DISABLE_LOOP_DISPLAYANIMATE
+#if DISPLAY_CONFIG == DISPLAY1X4
+  if (!parola.getZoneStatus(ZONE_SINGLE))
+  {
+    parola.displayAnimate();
+  }
+#elif DISPLAY_CONFIG == DISPLAY2X8
+  if (!(parola.getZoneStatus(ZONE_LOWER) && parola.getZoneStatus(ZONE_UPPER)))
+  {
+    parola.displayAnimate();
+  }
+#endif
+#else
+#if DEBUG_LOOP_BREADCRUMBS
+  Serial.println("[LOOP] displayAnimate skipped");
+#endif
+#endif
+
+#if DEBUG_LOOP_BREADCRUMBS
+  Serial.println("[LOOP] after synch/displayAnimate");
+#endif
 
   boolean groupMode1Done = false;
   boolean groupMode2Done = false;
@@ -624,11 +700,31 @@ void loop()
         displayHorzMessage(dispParam[paramIndex].dispBuffer);
       else
       {
+      #if DISPLAY_CONFIG == DISPLAY1X4
+        if ((paramIndex == DISP_CURR_WIRED_TEMP_IN || paramIndex == DISP_CURR_WIRED_TEMP_OUT) && DEBUG_DISABLE_DISPLAY1X4_WIRED_TEMP_VERTICAL)
+        {
+      #if DEBUG_DISPLAY_TRACE
+          Serial.print("[DISP][MAIN] wired temp vertical skipped index=");
+          Serial.println(paramIndex);
+      #endif
+          continue;
+        }
+      #endif
+#if DEBUG_DISPLAY_TRACE
+        Serial.print("[DISP][MAIN] vertical payload index=");
+        Serial.println(paramIndex);
+#endif
         displayVertMessage(dispParam[paramIndex].dispBuffer);
       }
 
+#if !DEBUG_DISABLE_TIME_INSERT_AFTER_VERTICAL
       getCurrentTime(displayString, false);
       displayVertMessage(displayString);
+#else
+#if DEBUG_DISPLAY_TRACE
+      Serial.println("[DISP][MAIN] time insert skipped");
+#endif
+#endif
 
       Serial.print("verticle parameter display index:");
       Serial.println(paramIndex);
@@ -678,6 +774,10 @@ void loop()
     }
 #endif
   }
+
+#if DEBUG_LOOP_BREADCRUMBS
+  Serial.println("[LOOP] exit");
+#endif
 }
 
 

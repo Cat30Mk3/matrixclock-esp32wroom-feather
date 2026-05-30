@@ -42,21 +42,20 @@ ICACHE_RAM_ATTR void tickerNonBlockingTempStartISR(void) {
 }
 
 ICACHE_RAM_ATTR void tickerNonBlockingTempGetISR(void) {
-  char tempDegCStr[2][20];
+  char tempDegCStr[20];
   float tempDegCFlt;
 
   if (!mqttCallbackInprogress) {
-    for (int index = 0; index < ds18b20Count; index++) {
-      tempDegCFlt = sensors.getTempC(ds18b20Address[index]);
+    for (int index = 0; index < ds18b20Count && index < 2; index++) {
       tempDegCFlt = sensors.getTempC(ds18b20Address[index]);
 
       if (tempDegCFlt > -60) {
-        dtostrf(tempDegCFlt, -4, 1, tempDegCStr[index]);
-        sprintf(dispParam[DISP_CURR_WIRED_TEMP_IN + index].dispBuffer, "%s%c",
-                tempDegCStr[index],
-                dispParam[DISP_CURR_WIRED_TEMP_IN + index].symbolIndex);
-        dispParam[DISP_CURR_WIRED_TEMP_IN + index].dispReady = true;
-        dispParam[DISP_CURR_WIRED_TEMP_IN].lastReceivedUpdate = millis();
+        dtostrf(tempDegCFlt, -4, 1, tempDegCStr);
+        snprintf(g_wiredTempStageBuffer[index], sizeof(g_wiredTempStageBuffer[index]), "%s%c",
+                 tempDegCStr,
+                 dispParam[DISP_CURR_WIRED_TEMP_IN + index].symbolIndex);
+        g_wiredTempStageMillis[index] = millis();
+        g_wiredTempStageReady[index] = true;
       }
     }
   }

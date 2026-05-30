@@ -9,6 +9,26 @@ const int      kPerAttemptWaitSteps     = 16;
 const uint32_t kPerStepDelayMs          = 750;
 const uint32_t kInterAttemptBackoffMs   = 500;
 
+bool wifiStatusZonesReady() {
+#if DISPLAY_CONFIG == DISPLAY1X4
+  return parola.getZoneStatus(ZONE_SINGLE);
+#elif DISPLAY_CONFIG == DISPLAY2X8
+  return parola.getZoneStatus(ZONE_LOWER) && parola.getZoneStatus(ZONE_UPPER);
+#endif
+}
+
+void wifiDisplayStatus(const char *text) {
+#if DISPLAY_CONFIG == DISPLAY1X4
+  parola.displayZoneText(ZONE_SINGLE, text, PA_CENTER, H_SCROLL_SPEED, H_PAUSE, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+#elif DISPLAY_CONFIG == DISPLAY2X8
+  parola.setFont(ZONE_LOWER, BigFontLower);
+  parola.setFont(ZONE_UPPER, BigFontUpper);
+  parola.displayZoneText(ZONE_LOWER, text, PA_CENTER, H_SCROLL_SPEED, H_PAUSE, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+  parola.displayZoneText(ZONE_UPPER, text, PA_CENTER, H_SCROLL_SPEED, H_PAUSE, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+#endif
+  parola.synchZoneStart();
+}
+
 // Wait for 'ms' milliseconds while keeping the Parola display animated.
 // Calls parola.displayAnimate() every 50 ms so scrolling messages stay alive.
 void wifiWaitWithDisplay(uint32_t ms) {
@@ -28,9 +48,8 @@ void wifiShowConnecting(int attemptNum) {
   static char buf[12];
   const char *dots = (attemptNum % 3 == 1) ? "." : (attemptNum % 3 == 2) ? ".." : "...";
   snprintf(buf, sizeof(buf), "WiFi%s", dots);
-  if (parola.getZoneStatus(ZONE_SINGLE)) {
-    parola.displayZoneText(ZONE_SINGLE, buf, PA_CENTER, H_SCROLL_SPEED, H_PAUSE, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
-    parola.synchZoneStart();
+  if (wifiStatusZonesReady()) {
+    wifiDisplayStatus(buf);
   }
 }
 
@@ -75,8 +94,7 @@ bool newWiFiConnect(boolean force) {
   WiFi.disconnect(false, false);
   // Show initial "WiFi." while the radio settles — starts the animation before the
   // long settle delay so the display is never blank.
-  parola.displayZoneText(ZONE_SINGLE, "WiFi.", PA_CENTER, H_SCROLL_SPEED, H_PAUSE, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
-  parola.synchZoneStart();
+  wifiDisplayStatus("WiFi.");
   wifiWaitWithDisplay(kInitialStaSettleDelayMs);
 
   // Resolve hostname from config; fall back to firmware default if blank.

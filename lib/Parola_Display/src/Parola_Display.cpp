@@ -3,18 +3,29 @@
 #include "Mode_Manager.h"
 
 void displayVertMessage(const char* msg) {
+#if DEBUG_DISPLAY_TRACE
+  Serial.print("[DISP][VERT] request: ");
+  Serial.println(msg);
+#endif
 #if DISPLAY_CONFIG == DISPLAY1X4
+  Serial.println("[DISP][VERT] waiting for ZONE_SINGLE ready");
   while (!parola.getZoneStatus(ZONE_SINGLE))
 #elif DISPLAY_CONFIG == DISPLAY2X8
+  Serial.println("[DISP][VERT] waiting for ZONE_LOWER+ZONE_UPPER ready");
   while (!(parola.getZoneStatus(ZONE_LOWER) && parola.getZoneStatus(ZONE_UPPER)))
 #endif
   {
     if (modeManagerInApControlMode()) return;
     parola.displayAnimate();
     nonBlockingDelay(V_SCROLL_SPEED);
+#if DEBUG_DISPLAY_TRACE
     Serial.print("^");
+#endif
   }
+#if DEBUG_DISPLAY_TRACE
   Serial.println();
+  Serial.println("[DISP][VERT] arming scroll message");
+#endif
 
 #if DISPLAY_CONFIG == DISPLAY1X4
   parola.displayZoneText(ZONE_SINGLE, msg, PA_CENTER, V_SCROLL_SPEED, V_PAUSE, PA_SCROLL_DOWN, PA_SCROLL_DOWN);
@@ -25,6 +36,10 @@ void displayVertMessage(const char* msg) {
 #endif
 
 #if DISPLAY_CONFIG == DISPLAY1X4
+#if DEBUG_DISPLAY_VERT_SCROLL_ASYNC
+  Serial.println("[DISP][VERT] async bypass enabled - returning after arm");
+  return;
+#endif
   while (!parola.getZoneStatus(ZONE_SINGLE))
 #elif DISPLAY_CONFIG == DISPLAY2X8
   while (!(parola.getZoneStatus(ZONE_LOWER) && parola.getZoneStatus(ZONE_UPPER)))
@@ -34,6 +49,9 @@ void displayVertMessage(const char* msg) {
     parola.displayAnimate();
     nonBlockingDelay(V_SCROLL_SPEED);
   }
+#if DEBUG_DISPLAY_TRACE
+  Serial.println("[DISP][VERT] scroll complete");
+#endif
 }
 
 boolean serviceQuadPage(int numbQuads, dispParamStruct UL, dispParamStruct UR, dispParamStruct LL, dispParamStruct LR) {

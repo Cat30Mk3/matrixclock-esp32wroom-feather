@@ -71,6 +71,9 @@ Ticker tickerMqttKeepAliveInstance;
 Ticker tickerTempStartInstance;
 Ticker tickerTempGetInstance;
 volatile boolean delayFlag = false;
+volatile bool g_wiredTempStageReady[2] = {false, false};
+char g_wiredTempStageBuffer[2][30] = {{0}, {0}};
+volatile uint32_t g_wiredTempStageMillis[2] = {0, 0};
 
 // ============================================================================
 // ISR GLOBALS
