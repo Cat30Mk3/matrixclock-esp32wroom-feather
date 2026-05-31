@@ -2,26 +2,49 @@
 #include "globals.h"
 #include "Mode_Manager.h"
 
+namespace {
+bool waitForVertZonesReady(uint32_t timeoutMs, const char* phaseLabel) {
+  const uint32_t startMs = millis();
+
+#if DISPLAY_CONFIG == DISPLAY1X4
+  while (!parola.getZoneStatus(ZONE_SINGLE))
+#elif DISPLAY_CONFIG == DISPLAY2X8
+  while (!(parola.getZoneStatus(ZONE_LOWER) && parola.getZoneStatus(ZONE_UPPER)))
+#endif
+  {
+    if (modeManagerInApControlMode()) return false;
+
+    if ((millis() - startMs) >= timeoutMs) {
+      Serial.print("[DISP][VERT] zone wait timeout at ");
+      Serial.println(phaseLabel);
+      return false;
+    }
+
+    // Use displayAnimate() + yield() only — NOT nonBlockingDelay().
+    // nonBlockingDelay() services modeManagerService() and mqttServiceKeepAlive()
+    // which can re-arm display zones, preventing getZoneStatus from ever returning
+    // true and causing an infinite stall on DISPLAY1X4.
+    parola.displayAnimate();
+    yield();
+  }
+
+  return true;
+}
+}
+
 void displayVertMessage(const char* msg) {
 #if DEBUG_DISPLAY_TRACE
   Serial.print("[DISP][VERT] request: ");
   Serial.println(msg);
 #endif
+#if DEBUG_DISPLAY_TRACE
 #if DISPLAY_CONFIG == DISPLAY1X4
   Serial.println("[DISP][VERT] waiting for ZONE_SINGLE ready");
-  while (!parola.getZoneStatus(ZONE_SINGLE))
 #elif DISPLAY_CONFIG == DISPLAY2X8
   Serial.println("[DISP][VERT] waiting for ZONE_LOWER+ZONE_UPPER ready");
-  while (!(parola.getZoneStatus(ZONE_LOWER) && parola.getZoneStatus(ZONE_UPPER)))
 #endif
-  {
-    if (modeManagerInApControlMode()) return;
-    parola.displayAnimate();
-    nonBlockingDelay(V_SCROLL_SPEED);
-#if DEBUG_DISPLAY_TRACE
-    Serial.print("^");
 #endif
-  }
+  if (!waitForVertZonesReady(15000, "pre-arm")) return;
 #if DEBUG_DISPLAY_TRACE
   Serial.println();
   Serial.println("[DISP][VERT] arming scroll message");
@@ -40,15 +63,16 @@ void displayVertMessage(const char* msg) {
   Serial.println("[DISP][VERT] async bypass enabled - returning after arm");
   return;
 #endif
-  while (!parola.getZoneStatus(ZONE_SINGLE))
-#elif DISPLAY_CONFIG == DISPLAY2X8
-  while (!(parola.getZoneStatus(ZONE_LOWER) && parola.getZoneStatus(ZONE_UPPER)))
-#endif
-  {
-    if (modeManagerInApControlMode()) return;
-    parola.displayAnimate();
-    nonBlockingDelay(V_SCROLL_SPEED);
+  if (!waitForVertZonesReady(15000, "post-arm")) {
+    parola.displayClear();
+    return;
   }
+#elif DISPLAY_CONFIG == DISPLAY2X8
+  if (!waitForVertZonesReady(15000, "post-arm")) {
+    parola.displayClear();
+    return;
+  }
+#endif
 #if DEBUG_DISPLAY_TRACE
   Serial.println("[DISP][VERT] scroll complete");
 #endif
