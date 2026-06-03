@@ -543,6 +543,7 @@ void loop()
 {
   static uint32_t lastDisplayNormalizeMs = 0;
   static uint32_t lastApModeHeartbeatMs = 0;
+  static uint32_t lastHealthLogMs = 0;
 
 #if DEBUG_LOOP_BREADCRUMBS
   Serial.println("[LOOP] enter");
@@ -567,6 +568,23 @@ void loop()
 
   if (configDb.mqttEnabled && configDb.wifiEnabled) {
     mqttServiceKeepAlive();
+  }
+
+  if (millis() - lastHealthLogMs >= 60000)
+  {
+    lastHealthLogMs = millis();
+    Serial.print("[HEALTH] up_s=");
+    Serial.print(static_cast<unsigned long>(millis() / 1000UL));
+    Serial.print(" freeHeap=");
+    Serial.print(ESP.getFreeHeap());
+    Serial.print(" minFreeHeap=");
+    Serial.print(ESP.getMinFreeHeap());
+    Serial.print(" maxAllocHeap=");
+    Serial.print(ESP.getMaxAllocHeap());
+    Serial.print(" wifi=");
+    Serial.print((WiFi.status() == WL_CONNECTED) ? "UP" : "DOWN");
+    Serial.print(" mqtt=");
+    Serial.println(mqttAlive ? "UP" : "DOWN");
   }
 
   if (millis() - lastDisplayNormalizeMs >= 1000)

@@ -9,31 +9,32 @@ uint32_t s_lastKeepAlivePublishMs = 0;
 }
 
 ICACHE_RAM_ATTR void callback(char* topic, byte* payload, unsigned int length) {
-  char strPayload[1536];
+  static char strPayload[1536];
   char compareMsg[100];
-
-  int cmndIndex;
-  boolean cmndValid = false;
-  boolean payloadFound = false;
 
   mqttCallbackInprogress = true;
 
   Serial.print("MQTT Message arrived [");
   Serial.print(topic);
   Serial.print("] ");
-  for (int i = 0; i < length; i++) {
+
+  const size_t copyLen = (length < (sizeof(strPayload) - 1)) ? length : (sizeof(strPayload) - 1);
+  for (size_t i = 0; i < copyLen; i++) {
     strPayload[i] = (char)payload[i];
   }
+  strPayload[copyLen] = '\0';
 
-  strPayload[length] = '\0';
-  if (strlen(strPayload) > 0)payloadFound = true;
+  if (length >= sizeof(strPayload)) {
+    Serial.print("[MQTT] payload truncated from ");
+    Serial.print(length);
+    Serial.print(" to ");
+    Serial.println(copyLen);
+  }
 
   for (int mqttDeviceIndex = 1; mqttDeviceIndex < 3; mqttDeviceIndex++) {
-    sprintf(compareMsg, "%s/%s/%s", "tele", configDb.mqttDeviceName[mqttDeviceIndex], "Temp");
+    snprintf(compareMsg, sizeof(compareMsg), "%s/%s/%s", "tele", configDb.mqttDeviceName[mqttDeviceIndex], "Temp");
 
     if (strstr(topic, compareMsg) != NULL) {
-      cmndValid = true;
-
       if (parseJSONPayloadVer3(mqttDeviceIndex, strPayload) == 0) {
         mqttCallbackInprogress = false;
         return;

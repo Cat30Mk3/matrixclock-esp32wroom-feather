@@ -3,7 +3,17 @@
 #include "Mode_Manager.h"
 
 namespace {
-bool waitForVertZonesReady(uint32_t timeoutMs, const char* phaseLabel) {
+void pollMqttDuringDisplayWait() {
+  if (configDb.mqttEnabled && configDb.wifiEnabled && WiFi.status() == WL_CONNECTED) {
+    if (mqttClient.connected()) {
+      mqttAlive = mqttClient.loop();
+    } else {
+      mqttAlive = false;
+    }
+  }
+}
+
+bool waitForMainZonesReady(uint32_t timeoutMs, const char* phaseLabel, const char* pathTag) {
   const uint32_t startMs = millis();
 
 #if DISPLAY_CONFIG == DISPLAY1X4
@@ -15,7 +25,8 @@ bool waitForVertZonesReady(uint32_t timeoutMs, const char* phaseLabel) {
     if (modeManagerInApControlMode()) return false;
 
     if ((millis() - startMs) >= timeoutMs) {
-      Serial.print("[DISP][VERT] zone wait timeout at ");
+      Serial.print(pathTag);
+      Serial.print(" zone wait timeout at ");
       Serial.println(phaseLabel);
       return false;
     }
@@ -25,11 +36,37 @@ bool waitForVertZonesReady(uint32_t timeoutMs, const char* phaseLabel) {
     // which can re-arm display zones, preventing getZoneStatus from ever returning
     // true and causing an infinite stall on DISPLAY1X4.
     parola.displayAnimate();
+
+    // Keep waits non-reentrant while still servicing MQTT keepalive.
+    pollMqttDuringDisplayWait();
+
     yield();
   }
 
   return true;
 }
+
+#if DISPLAY_CONFIG == DISPLAY2X8
+bool waitForZoneReady(uint8_t zone, uint32_t timeoutMs, const char* phaseLabel, const char* pathTag) {
+  const uint32_t startMs = millis();
+  while (!parola.getZoneStatus(zone)) {
+    if (modeManagerInApControlMode()) return false;
+
+    if ((millis() - startMs) >= timeoutMs) {
+      Serial.print(pathTag);
+      Serial.print(" zone wait timeout at ");
+      Serial.println(phaseLabel);
+      return false;
+    }
+
+    parola.displayAnimate();
+    pollMqttDuringDisplayWait();
+    yield();
+  }
+
+  return true;
+}
+#endif
 }
 
 void displayVertMessage(const char* msg) {
@@ -44,7 +81,7 @@ void displayVertMessage(const char* msg) {
   Serial.println("[DISP][VERT] waiting for ZONE_LOWER+ZONE_UPPER ready");
 #endif
 #endif
-  if (!waitForVertZonesReady(15000, "pre-arm")) return;
+  if (!waitForMainZonesReady(15000, "pre-arm", "[DISP][VERT]")) return;
 #if DEBUG_DISPLAY_TRACE
   Serial.println();
   Serial.println("[DISP][VERT] arming scroll message");
@@ -63,12 +100,12 @@ void displayVertMessage(const char* msg) {
   Serial.println("[DISP][VERT] async bypass enabled - returning after arm");
   return;
 #endif
-  if (!waitForVertZonesReady(15000, "post-arm")) {
+  if (!waitForMainZonesReady(15000, "post-arm", "[DISP][VERT]")) {
     parola.displayClear();
     return;
   }
 #elif DISPLAY_CONFIG == DISPLAY2X8
-  if (!waitForVertZonesReady(15000, "post-arm")) {
+  if (!waitForMainZonesReady(15000, "post-arm", "[DISP][VERT]")) {
     parola.displayClear();
     return;
   }
@@ -80,11 +117,7 @@ void displayVertMessage(const char* msg) {
 
 boolean serviceQuadPage(int numbQuads, dispParamStruct UL, dispParamStruct UR, dispParamStruct LL, dispParamStruct LR) {
 #if DISPLAY_CONFIG == DISPLAY2X8
-  while (!(parola.getZoneStatus(ZONE_UP_LFT))) {
-    if (modeManagerInApControlMode()) return false;
-    parola.displayAnimate();
-    nonBlockingDelay(V_SCROLL_SPEED);
-  }
+  if (!waitForZoneReady(ZONE_UP_LFT, 15000, "pre-arm", "[DISP][QUAD]")) return false;
 
   if ((numbQuads < 1) || (numbQuads > 4))return false;
   if (!UL.dispReady && !UR.dispReady && !LL.dispReady && !LL.dispReady) return false;
@@ -112,14 +145,10 @@ boolean serviceQuadPage(int numbQuads, dispParamStruct UL, dispParamStruct UR, d
   parola.displayZoneText(ZONE_DN_LFT, msg[2], PA_RIGHT, V_SCROLL_SPEED, V_PAUSE * numbQuads, PA_SCROLL_DOWN, PA_SCROLL_DOWN);
   parola.displayZoneText(ZONE_DN_RGT, msg[3], PA_RIGHT, V_SCROLL_SPEED, V_PAUSE * numbQuads, PA_SCROLL_DOWN, PA_SCROLL_DOWN);
 
-  long animateTimer    = millis();
-  long animateDuration = ((2 * VDOTS_PER_CHAR * V_SCROLL_SPEED) + (V_PAUSE * numbQuads));
-
   parola.synchZoneStart();
-  while (!parola.getZoneStatus(ZONE_UP_LFT)) {
-    if (modeManagerInApControlMode()) return false;
-    parola.displayAnimate();
-    nonBlockingDelay(V_SCROLL_SPEED);
+  if (!waitForZoneReady(ZONE_UP_LFT, 15000, "post-arm", "[DISP][QUAD]")) {
+    parola.displayClear();
+    return false;
   }
   return true;
 #endif
@@ -127,18 +156,7 @@ boolean serviceQuadPage(int numbQuads, dispParamStruct UL, dispParamStruct UR, d
 }
 
 void displayHorzMessage(const char* msg) {
-  long animateDuration;
-
-#if DISPLAY_CONFIG == DISPLAY1X4
-  while (!parola.getZoneStatus(ZONE_SINGLE))
-#elif DISPLAY_CONFIG == DISPLAY2X8
-  while (!(parola.getZoneStatus(ZONE_LOWER) && parola.getZoneStatus(ZONE_UPPER)))
-#endif
-  {
-    if (modeManagerInApControlMode()) return;
-    parola.displayAnimate();
-    nonBlockingDelay(H_SCROLL_SPEED);
-  }
+  if (!waitForMainZonesReady(15000, "pre-arm", "[DISP][HORZ]")) return;
   Serial.println();
 
 #if DISPLAY_CONFIG == DISPLAY1X4
@@ -151,15 +169,9 @@ void displayHorzMessage(const char* msg) {
 #endif
 
   parola.synchZoneStart();
-#if DISPLAY_CONFIG == DISPLAY1X4
-  while (!parola.getZoneStatus(ZONE_SINGLE))
-#elif DISPLAY_CONFIG == DISPLAY2X8
-  while (!(parola.getZoneStatus(ZONE_LOWER) && parola.getZoneStatus(ZONE_UPPER)))
-#endif
-  {
-    if (modeManagerInApControlMode()) return;
-    parola.displayAnimate();
-    nonBlockingDelay(H_SCROLL_SPEED / 10);
+  if (!waitForMainZonesReady(15000, "post-arm", "[DISP][HORZ]")) {
+    parola.displayClear();
+    return;
   }
   Serial.println();
 }
