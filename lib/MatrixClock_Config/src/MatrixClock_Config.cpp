@@ -71,6 +71,10 @@ bool writeConfigField(char *destination, size_t destinationLen, const char *valu
 
 void applyRuntimeConfigToLegacyGlobals(const MatrixClockRuntimeConfig &runtimeConfig) {
   configDb = runtimeConfig.configDb;
+#if DEBUG_FORCE_MQTT_DISABLED
+  configDb.mqttEnabled = false;
+  g_matrixClockRuntimeConfig.configDb.mqttEnabled = false;
+#endif
   applyTimezone(configDb.tzIndex);
 }
 

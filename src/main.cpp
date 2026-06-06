@@ -587,6 +587,8 @@ void loop()
     Serial.println(mqttAlive ? "UP" : "DOWN");
   }
 
+  serviceQueuedMqttPayload();
+
   if (millis() - lastDisplayNormalizeMs >= 1000)
   {
     lastDisplayNormalizeMs = millis();

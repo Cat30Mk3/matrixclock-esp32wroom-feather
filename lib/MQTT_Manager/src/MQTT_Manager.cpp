@@ -6,41 +6,57 @@
 namespace {
 const uint32_t kKeepAlivePublishMs = 25000;
 uint32_t s_lastKeepAlivePublishMs = 0;
+
+volatile bool s_queuedMqttPayloadReady = false;
+volatile int s_queuedMqttDeviceIndex = -1;
+volatile unsigned int s_queuedMqttPayloadLength = 0;
+char s_queuedMqttTopic[100];
+char s_queuedMqttPayload[1536];
 }
 
 ICACHE_RAM_ATTR void callback(char* topic, byte* payload, unsigned int length) {
-  static char strPayload[1536];
   char compareMsg[100];
 
   mqttCallbackInprogress = true;
-
-  Serial.print("MQTT Message arrived [");
-  Serial.print(topic);
-  Serial.print("] ");
-
-  const size_t copyLen = (length < (sizeof(strPayload) - 1)) ? length : (sizeof(strPayload) - 1);
-  for (size_t i = 0; i < copyLen; i++) {
-    strPayload[i] = (char)payload[i];
-  }
-  strPayload[copyLen] = '\0';
-
-  if (length >= sizeof(strPayload)) {
-    Serial.print("[MQTT] payload truncated from ");
-    Serial.print(length);
-    Serial.print(" to ");
-    Serial.println(copyLen);
-  }
 
   for (int mqttDeviceIndex = 1; mqttDeviceIndex < 3; mqttDeviceIndex++) {
     snprintf(compareMsg, sizeof(compareMsg), "%s/%s/%s", "tele", configDb.mqttDeviceName[mqttDeviceIndex], "Temp");
 
     if (strstr(topic, compareMsg) != NULL) {
-      if (parseJSONPayloadVer3(mqttDeviceIndex, strPayload) == 0) {
-        mqttCallbackInprogress = false;
-        return;
-      }
+      const size_t copyLen = (length < (sizeof(s_queuedMqttPayload) - 1)) ? length : (sizeof(s_queuedMqttPayload) - 1);
+      strlcpy(s_queuedMqttTopic, topic, sizeof(s_queuedMqttTopic));
+      memcpy(s_queuedMqttPayload, payload, copyLen);
+      s_queuedMqttPayload[copyLen] = '\0';
+      s_queuedMqttPayloadLength = static_cast<unsigned int>(copyLen);
+      s_queuedMqttDeviceIndex = mqttDeviceIndex;
+      s_queuedMqttPayloadReady = true;
+
+      Serial.print("MQTT Message queued [");
+      Serial.print(s_queuedMqttTopic);
+      Serial.print("] len=");
+      Serial.println(s_queuedMqttPayloadLength);
+      return;
     }
   }
+
+  mqttCallbackInprogress = false;
+}
+
+void serviceQueuedMqttPayload(void) {
+  if (!s_queuedMqttPayloadReady) {
+    return;
+  }
+
+  const int deviceIndex = s_queuedMqttDeviceIndex;
+  s_queuedMqttPayloadReady = false;
+
+  if (deviceIndex >= 1 && deviceIndex < 3) {
+    Serial.print("MQTT Message arrived [");
+    Serial.print(s_queuedMqttTopic);
+    Serial.println("] [parseJSONPayloadVer3]:start");
+    parseJSONPayloadVer3(deviceIndex, s_queuedMqttPayload);
+  }
+
   mqttCallbackInprogress = false;
 }
 

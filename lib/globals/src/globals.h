@@ -58,6 +58,7 @@ extern const configDb_t g_factoryDefaults;
 #define DEBUG_DISABLE_LOOP_SYNCHZONESTART 0
 #define DEBUG_DISABLE_LOOP_DISPLAYANIMATE 0
 #define DEBUG_DISABLE_DISPLAY1X4_WIRED_TEMP_VERTICAL 0
+#define DEBUG_FORCE_MQTT_DISABLED 0
 
 #define SWAP_DS18B20 1              // 0 for no swap, 1 for swap
 #define ONE_TEMP_IS_IN 1            // 0 for "ONE_TEMP_IS_OUT", 1 for "ONE_TEMP_IS_IN"

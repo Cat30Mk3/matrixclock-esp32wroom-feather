@@ -2,6 +2,11 @@
 #include "globals.h"
 #include <ArduinoJson.h>
 
+namespace {
+// Reuse a single document to avoid repeated alloc/free churn over long runtimes.
+JsonDocument s_mqttJsonDoc;
+}
+
 ICACHE_RAM_ATTR boolean parseJSONPayloadVer3(int deviceNameIndex, char *json) {
   char tempTemp[16];
   char objName[16];
@@ -9,8 +14,8 @@ ICACHE_RAM_ATTR boolean parseJSONPayloadVer3(int deviceNameIndex, char *json) {
 
   Serial.println("[parseJSONPayloadVer3]:start");
 
-  JsonDocument root;
-  DeserializationError error = deserializeJson(root, json);
+  s_mqttJsonDoc.clear();
+  DeserializationError error = deserializeJson(s_mqttJsonDoc, json);
 
   if (error) {
     Serial.print("deserializeJson() failed: ");
@@ -18,10 +23,10 @@ ICACHE_RAM_ATTR boolean parseJSONPayloadVer3(int deviceNameIndex, char *json) {
     return 1;
   }
 
-  if(root.isNull()) return 1;
+  if (s_mqttJsonDoc.isNull()) return 1;
 
-  JsonObject Temp = root["Temp"];
-  if(Temp.isNull()) return 1;
+  JsonObject Temp = s_mqttJsonDoc["Temp"];
+  if (Temp.isNull()) return 1;
 
   int errorCounter = 0;
 
@@ -34,13 +39,19 @@ ICACHE_RAM_ATTR boolean parseJSONPayloadVer3(int deviceNameIndex, char *json) {
       startIndex = DISP_CURR_MQTT_HOM_TEMP_IN;
       endIndex = DISP_CURR_MQTT_HOM_TEMP_CAV;
       break;
+    default:
+      return 1;
   }
 
   for (objIndex = startIndex; objIndex <= endIndex; objIndex++) {
-    strcpy(objName, dispParam[objIndex].mqttTopic);
-    strlcpy(tempTemp, Temp[objName]["value"] | "", 15);
+    strlcpy(objName, dispParam[objIndex].mqttTopic, sizeof(objName));
+    strlcpy(tempTemp, Temp[objName]["value"] | "", sizeof(tempTemp));
     if (strlen(tempTemp) > 0) {
-      sprintf(dispParam[objIndex].dispBuffer, "%s%c", tempTemp, dispParam[objIndex].symbolIndex);
+      snprintf(dispParam[objIndex].dispBuffer,
+               sizeof(dispParam[objIndex].dispBuffer),
+               "%s%c",
+               tempTemp,
+               dispParam[objIndex].symbolIndex);
       dispParam[objIndex].dispReady = true;
       dispParam[objIndex].lastReceivedUpdate = millis();
     }
