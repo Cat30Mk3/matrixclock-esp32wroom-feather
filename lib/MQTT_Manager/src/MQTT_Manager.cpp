@@ -7,6 +7,8 @@ namespace {
 const uint32_t kKeepAlivePublishMs = 25000;
 uint32_t s_lastKeepAlivePublishMs = 0;
 
+// Single-message queue: callback stores latest telemetry payload and returns fast.
+// Parsing/mutation runs in foreground (serviceQueuedMqttPayload) to keep callback lean.
 volatile bool s_queuedMqttPayloadReady = false;
 volatile int s_queuedMqttDeviceIndex = -1;
 volatile unsigned int s_queuedMqttPayloadLength = 0;
@@ -47,6 +49,7 @@ void serviceQueuedMqttPayload(void) {
     return;
   }
 
+  // Consume queued payload in foreground context.
   const int deviceIndex = s_queuedMqttDeviceIndex;
   s_queuedMqttPayloadReady = false;
 

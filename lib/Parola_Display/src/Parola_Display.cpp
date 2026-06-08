@@ -39,10 +39,10 @@ bool waitForMainZonesReady(uint32_t timeoutMs, const char* phaseLabel, const cha
       return false;
     }
 
-    // Use displayAnimate() + yield() only — NOT nonBlockingDelay().
-    // nonBlockingDelay() services modeManagerService() and mqttServiceKeepAlive()
-    // which can re-arm display zones, preventing getZoneStatus from ever returning
-    // true and causing an infinite stall on DISPLAY1X4.
+    // Keep wait loops non-reentrant: animate + targeted polling + yield only.
+    // Do not call nonBlockingDelay() here because broad service calls can
+    // mutate display/network state during an in-flight transition and starve
+    // zone-ready completion checks.
     parola.displayAnimate();
 
     // Keep waits non-reentrant while still servicing MQTT keepalive.
