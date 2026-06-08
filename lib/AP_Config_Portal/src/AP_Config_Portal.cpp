@@ -50,6 +50,7 @@ void renderInfoPage();
 void renderConfigPage(const char *pageId);
 void handleSaveConfigPage(const char *pageId);
 void renderExitPage(bool saved);
+void handleExitFromLogin();
 void recordActivity();
 String consumeFlash();
 
@@ -236,7 +237,10 @@ void renderLoginPage(const String &message) {
             "<label for='pin'>PIN</label>"
             "<input type='password' id='pin' name='pin' maxlength='4'"
             " inputmode='numeric' autocomplete='off' required>"
-            "<button type='submit' class='btn bn'>Login</button>"
+            "<div style='display:flex;gap:8px;'>"
+            "<button type='submit' class='btn bn' style='flex:1;margin:0;'>Login</button>"
+            "<button type='button' class='btn bk' style='flex:1;margin:0;' onclick='location.href=\"/exit/login-cancel\"'>Cancel</button>"
+            "</div>"
             "</form>");
   html += pageFoot();
   s_server->sendHeader("Connection", "close");
@@ -471,6 +475,16 @@ void handleExitCancel() {
   s_exitScheduledMs = millis();
 }
 
+void handleExitFromLogin() {
+  recordActivity();
+  // Allow exit before authentication from the PIN entry page.
+  s_authenticated = false;
+  s_hasUnsavedChanges = false;
+  renderExitPage(false);
+  s_exitWasSave     = false;
+  s_exitScheduledMs = millis();
+}
+
 void handleLogout() {
   recordActivity();
   s_authenticated = false;
@@ -535,6 +549,7 @@ bool apPortalStartServer(uint16_t port, bool enableDns) {
   s_server->on("/login",       HTTP_POST, handleLogin);
   s_server->on("/menu",        HTTP_GET,  handleMenu);
   s_server->on("/info",        HTTP_GET,  handleInfo);
+  s_server->on("/exit/login-cancel", HTTP_GET, handleExitFromLogin);
   s_server->on("/exit/save",   HTTP_GET,  handleExitSave);
   s_server->on("/exit/cancel", HTTP_GET,  handleExitCancel);
   s_server->on("/logout",      HTTP_GET,  handleLogout);

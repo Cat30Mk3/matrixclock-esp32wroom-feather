@@ -158,34 +158,8 @@ void stopApSetupRuntime()
 
 void serviceModeManagerPassiveDiagnostics()
 {
-  static bool s_lastConfirmPromptActive = false;
-  static uint32_t s_lastButtonSnapshotMs = 0;
-
   modeManagerServiceButtonDiagnostics();
   modeManagerService();
-
-  if ((millis() - s_lastButtonSnapshotMs) >= 2000)
-  {
-    s_lastButtonSnapshotMs = millis();
-    Serial.print("[BTN-SNAPSHOT] SEL=");
-    Serial.print(digitalRead(PB_SEL_PIN));
-    Serial.print(" DEC=");
-    Serial.print(digitalRead(PB_DEC_PIN));
-    Serial.print(" INC=");
-    Serial.print(digitalRead(PB_INC_PIN));
-    Serial.print(" CNL=");
-    Serial.print(digitalRead(PB_CNL_PIN));
-    Serial.print(" MEN=");
-    Serial.println(digitalRead(PB_MEN_PIN));
-  }
-
-  bool confirmActive = modeManagerIsConfirmPromptActive();
-  if (confirmActive != s_lastConfirmPromptActive)
-  {
-    s_lastConfirmPromptActive = confirmActive;
-    Serial.print("[MODE] confirmPrompt=");
-    Serial.println(confirmActive ? 1 : 0);
-  }
 }
 
 void handleModeEntryEvents()
@@ -227,8 +201,21 @@ void serviceApModeDisplay()
 #if DISPLAY_CONFIG == DISPLAY1X4
     parola.displayZoneText(ZONE_SINGLE, text, PA_CENTER, kApScrollSpeed, kApPauseMs, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
 #elif DISPLAY_CONFIG == DISPLAY2X8
+    // Re-assert 2x8 AP-mode rendering state; normal mode may have left spacing/zones in quad-page state.
+    parola.setCharSpacing(doubleCharSpace);
     parola.setFont(ZONE_LOWER, BigFontLower);
     parola.setFont(ZONE_UPPER, BigFontUpper);
+    parola.setFont(ZONE_UP_LFT, Special);
+    parola.setFont(ZONE_UP_RGT, Special);
+    parola.setFont(ZONE_DN_LFT, Special);
+    parola.setFont(ZONE_DN_RGT, Special);
+
+    // Park quad zones to static empty text so stale quad animations do not interfere with AP banner transitions.
+    parola.displayZoneText(ZONE_UP_LFT, "", PA_CENTER, H_SCROLL_SPEED, 0, PA_PRINT, PA_PRINT);
+    parola.displayZoneText(ZONE_UP_RGT, "", PA_CENTER, H_SCROLL_SPEED, 0, PA_PRINT, PA_PRINT);
+    parola.displayZoneText(ZONE_DN_LFT, "", PA_CENTER, H_SCROLL_SPEED, 0, PA_PRINT, PA_PRINT);
+    parola.displayZoneText(ZONE_DN_RGT, "", PA_CENTER, H_SCROLL_SPEED, 0, PA_PRINT, PA_PRINT);
+
     parola.displayZoneText(ZONE_LOWER, text, PA_CENTER, kApScrollSpeed, kApPauseMs, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
     parola.displayZoneText(ZONE_UPPER, text, PA_CENTER, kApScrollSpeed, kApPauseMs, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
 #endif
@@ -542,8 +529,6 @@ void setup()
 void loop()
 {
   static uint32_t lastDisplayNormalizeMs = 0;
-  static uint32_t lastApModeHeartbeatMs = 0;
-  static uint32_t lastHealthLogMs = 0;
 
 #if DEBUG_LOOP_BREADCRUMBS
   Serial.println("[LOOP] enter");
@@ -568,23 +553,6 @@ void loop()
 
   if (configDb.mqttEnabled && configDb.wifiEnabled) {
     mqttServiceKeepAlive();
-  }
-
-  if (millis() - lastHealthLogMs >= 60000)
-  {
-    lastHealthLogMs = millis();
-    Serial.print("[HEALTH] up_s=");
-    Serial.print(static_cast<unsigned long>(millis() / 1000UL));
-    Serial.print(" freeHeap=");
-    Serial.print(ESP.getFreeHeap());
-    Serial.print(" minFreeHeap=");
-    Serial.print(ESP.getMinFreeHeap());
-    Serial.print(" maxAllocHeap=");
-    Serial.print(ESP.getMaxAllocHeap());
-    Serial.print(" wifi=");
-    Serial.print((WiFi.status() == WL_CONNECTED) ? "UP" : "DOWN");
-    Serial.print(" mqtt=");
-    Serial.println(mqttAlive ? "UP" : "DOWN");
   }
 
   serviceQueuedMqttPayload();
@@ -634,13 +602,6 @@ void loop()
     }
 
     serviceApModeDisplay();
-
-    if (millis() - lastApModeHeartbeatMs >= 5000)
-    {
-      lastApModeHeartbeatMs = millis();
-      Serial.print("[MODE] active=");
-      Serial.println(modeManagerGetModeName(modeManagerGetMode()));
-    }
 
     nonBlockingDelay(20);
     return;
@@ -745,11 +706,6 @@ void loop()
       Serial.println("[DISP][MAIN] time insert skipped");
 #endif
 #endif
-
-      Serial.print("verticle parameter display index:");
-      Serial.println(paramIndex);
-      Serial.print("parameter display dispBuffer:");
-      Serial.println(dispParam[paramIndex].dispBuffer);
 
       if (dispParam[paramIndex].lastReceivedUpdate + MQTT_TELE_TOPIC_TIMEOUT_MS < millis())
       {
