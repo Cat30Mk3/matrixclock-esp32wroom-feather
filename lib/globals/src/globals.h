@@ -48,7 +48,7 @@ extern const configDb_t g_factoryDefaults;
 // ============================================================================
 #define DISPLAY1X4 0
 #define DISPLAY2X8 1
-#define DISPLAY_CONFIG DISPLAY1X4  // <<< SELECT DISPLAY CONFIGURATION
+#define DISPLAY_CONFIG DISPLAY2X8  // <<< SELECT DISPLAY CONFIGURATION
 
 #define DEBUG_DISPLAY_TRACE 0
 #define DEBUG_DISPLAY_VERT_SCROLL_ASYNC 0

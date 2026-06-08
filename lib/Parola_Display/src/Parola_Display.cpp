@@ -13,6 +13,14 @@ void pollMqttDuringDisplayWait() {
   }
 }
 
+void pollModeButtonsDuringDisplayWait() {
+  // Keep AP entry/exit button handling responsive while long display waits are active.
+  if (modeManagerIsBackgroundPollingEnabled()) {
+    modeManagerServiceButtonDiagnostics();
+    modeManagerService();
+  }
+}
+
 bool waitForMainZonesReady(uint32_t timeoutMs, const char* phaseLabel, const char* pathTag) {
   const uint32_t startMs = millis();
 
@@ -38,6 +46,7 @@ bool waitForMainZonesReady(uint32_t timeoutMs, const char* phaseLabel, const cha
     parola.displayAnimate();
 
     // Keep waits non-reentrant while still servicing MQTT keepalive.
+    pollModeButtonsDuringDisplayWait();
     pollMqttDuringDisplayWait();
 
     yield();
@@ -60,6 +69,7 @@ bool waitForZoneReady(uint8_t zone, uint32_t timeoutMs, const char* phaseLabel, 
     }
 
     parola.displayAnimate();
+    pollModeButtonsDuringDisplayWait();
     pollMqttDuringDisplayWait();
     yield();
   }
