@@ -12,10 +12,12 @@
 //   Hold MENU + CANCEL for 700 ms  →  returns to NORMAL mode
 //
 // --- BOOT: Recovery Mode (skips network startup, goes straight to AP portal) ---
-//   Hold MENU + SELECT  (or MENU + CANCEL)  through / immediately after Reset
+//   Hold MENU + SELECT  (or MENU + CANCEL)  before / through Reset and keep holding
 //   - Detection window : 3 000 ms from boot
 //   - Required hold    : 1 200 ms continuous
 //   - Serial confirms  : "[BOOT] Recovery combo detected - skipping network startup"
+//   NOTE: buttons are read via raw digitalRead during boot detection, so holding
+//   through the modeManagerBegin() idle-snapshot is safe and expected.
 //
 // ============================================================================
 

@@ -90,15 +90,18 @@ bool modeManagerIsBackgroundPollingEnabled() {
 }
 
 bool modeManagerCheckBootRecoveryRequest() {
-  // Fast path: if Menu is not already held, no recovery combo is possible.
-  if (!isPressed(PB_MEN_PIN)) return false;
+  // Use raw digitalRead here intentionally: modeManagerBegin() snapshots the
+  // button state as the "idle" baseline, so if buttons are already held at boot
+  // isPressed() would see them as NOT pressed (delta vs. baseline = zero).
+  // Direct pin reads give us the true physical state regardless of the snapshot.
+  if (digitalRead(PB_MEN_PIN) != LOW) return false;
 
   const uint32_t startedAtMs = millis();
   uint32_t comboHoldStartMs = 0;
 
   while ((millis() - startedAtMs) < s_config.bootRecoveryWindowMs) {
-    const bool menuPressed = isPressed(PB_MEN_PIN);
-    const bool recoveryConfirmPressed = isPressed(PB_SEL_PIN) || isPressed(PB_CNL_PIN);
+    const bool menuPressed = (digitalRead(PB_MEN_PIN) == LOW);
+    const bool recoveryConfirmPressed = (digitalRead(PB_SEL_PIN) == LOW) || (digitalRead(PB_CNL_PIN) == LOW);
     if (menuPressed && recoveryConfirmPressed) {
       if (comboHoldStartMs == 0) {
         comboHoldStartMs = millis();
