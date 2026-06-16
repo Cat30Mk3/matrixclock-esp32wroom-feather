@@ -1,3 +1,24 @@
+// ============================================================================
+// BUTTON COMBINATIONS & TIMING REFERENCE
+// ============================================================================
+//
+// --- RUNTIME: Enter AP Setup Mode ---
+//   1. Hold MENU for 4 s  →  confirm prompt activates (serial: "[MODE] confirm prompt active")
+//   2. Press SELECT or CANCEL to confirm  →  enters AP_SETUP mode
+//      - Confirm window resets every 5 s if no button pressed (stays armed indefinitely)
+//      - Release MENU before the 4 s hold completes = cancelled (150 ms release tolerance)
+//
+// --- RUNTIME: Exit AP / Recovery Mode ---
+//   Hold MENU + CANCEL for 700 ms  →  returns to NORMAL mode
+//
+// --- BOOT: Recovery Mode (skips network startup, goes straight to AP portal) ---
+//   Hold MENU + SELECT  (or MENU + CANCEL)  through / immediately after Reset
+//   - Detection window : 3 000 ms from boot
+//   - Required hold    : 1 200 ms continuous
+//   - Serial confirms  : "[BOOT] Recovery combo detected - skipping network startup"
+//
+// ============================================================================
+
 #include <Arduino.h>
 #include <Wire.h>
 #include <WiFi.h>
