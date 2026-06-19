@@ -18,6 +18,8 @@
 //   - Serial confirms  : "[BOOT] Recovery combo detected - skipping network startup"
 //   NOTE: buttons are read via raw digitalRead during boot detection, so holding
 //   through the modeManagerBegin() idle-snapshot is safe and expected.
+//   NOTE: Wire/RTC are initialized BEFORE the recovery early-return so the portal
+//   datetime page shows the real RTC time and rtc.adjust() works when time is set.
 //
 // ============================================================================
 
@@ -430,6 +432,25 @@ void setup()
   else
   {
     Serial.println("[CONFIG] WARNING: AP portal schema registration failed");
+  }
+
+  // Initialize I2C and RTC before the recovery check so that:
+  //   (a) the portal datetime page shows the real current time (not epoch/1969), and
+  //   (b) rtc.adjust() inside portalApplyConfig works on an initialized I2C bus.
+  // Wire.begin() and rtc.begin() are idempotent; the normal-boot path below re-runs
+  // them harmlessly (and benefits from the full I2C scan + display messages).
+  Wire.begin();
+  Wire.setClock(100000);
+  delay(100);
+  {
+    bool rtcPreRecovery = rtc.begin();
+    if (rtcPreRecovery) {
+      customSetTimeFromRTC();
+    } else {
+      setTime(compileTime());
+    }
+    Serial.print("[RTC] pre-recovery init: ");
+    Serial.println(rtcPreRecovery ? "ok, time loaded from RTC" : "not found, using compile time");
   }
 
   // Boot recovery: Menu+Select held through Reset forces AP mode, skipping network startup.
