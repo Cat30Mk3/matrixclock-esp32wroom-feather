@@ -11,8 +11,107 @@ This is a PlatformIO-compatible version of the matrixClock project, migrated fro
 <img width="45%"  alt="IMG_0113" src="https://github.com/user-attachments/assets/6fabb513-ec90-4e7d-99e3-d90884cb1552" />
 </p>
 
+## Web-Based Configuration Settings
 
+The Matrix Clock hosts a web-based configuration site used to set WiFi access, date and time, MQTT options, and other customizations.
 
+1. Trigger the WiFi Access Point
+
+    PRESS AND HOLD the Menu pushbutton on the back of the clock for AT LEAST 5 seconds.
+
+    THEN press the adjacent Cancel button.
+
+    The Access Point name `matrixClock-AP` will scroll across the display.
+    (The Access Point will time out after several minutes.)
+
+2. Connect to the Access Point Using a Phone, Tablet, or Laptop
+
+    Open the WiFi settings page on your device.
+
+    Select the `matrixClock-AP` SSID.
+    (No password is required.)
+
+    Note that it may take several seconds for the SSID to appear.
+
+3. Load the Login PIN Entry Web Page
+
+    On some devices, the "captive portal" entry page will automatically appear after a short delay.
+
+    If it does not appear automatically:
+
+    - Open a web browser such as Chrome or Safari.
+    - Enter the address `192.168.4.1`
+
+    This IP address will also be scrolling across the clock display.
+
+4. Login Using the PIN
+
+    Enter the random 4-digit PIN currently scrolling across the display.
+
+    Press **Enter**.
+
+    The Main Configuration Menu page will appear.
+
+5. Navigate to a Configuration Page and Edit Settings
+
+    Select the configuration page to edit:
+
+    - WiFi
+    - MQTT
+    - Date/Time
+    - Other settings
+
+    Enter the required values.
+
+    WiFi Configuration:
+
+    - Up to three SSID / Password pairs may be entered.
+    - The clock will try each network in sequence until connected.
+    - Ensure `WiFi Enabled` is checked if you want the clock to obtain time from the internet using NTP.
+
+    MQTT Configuration:
+
+    - `MQTT Enabled` should normally remain unchecked unless you want to receive custom published data.
+
+    Date and Time Configuration:
+
+    - Date and time settings allow manual adjustment of the battery-backed Real Time Clock (RTC).
+    - Manual RTC settings are only used when `WiFi Enabled` is NOT checked.
+    - If WiFi is enabled, the RTC will automatically synchronize using NTP network time.
+
+6. Confirm Any Changes
+
+    BEFORE LEAVING ANY EDIT PAGE, YOU MUST ACCEPT THE CHANGES OR THEY WILL BE LOST.
+
+    Select either:
+
+    - `Accept`
+    - `Exit Without Saving`
+
+7. Save and Exit Configuration
+
+    Select:
+
+    - `Save and Exit`
+      OR
+    - `Cancel and Exit`
+
+    The clock will then return to normal operating mode.
+
+8. Load Factory Settings
+
+    `Load Factory Settings` fills all edit screens with default values.
+
+    These values may then be edited and saved.
+
+    WARNING:
+    Loading factory settings followed by `Save and Exit` will overwrite all custom configurations.
+
+9. Return to Normal Clock Mode
+
+    After exiting the configuration system, the clock returns to normal display mode.
+
+   
 ## Features
 - **LED Matrix Display**: Supports two display panel configurations: 1x4 (4) and 2x8 (16) 8x8 led matrix modules
 - **multiple display formats** vertical and horizontal scrolling, multizone displays, custom characters
@@ -66,7 +165,7 @@ All dependencies are managed by PlatformIO and defined in `platformio.ini`:
 ## Configuration
 
 ### Display Configuration
-Edit `lib/globals/src/globals.h`:
+Edit `lib/globals/src/globals.h`:l
 ```cpp
 #define DISPLAY_CONFIG DISPLAY2X8  // or DISPLAY1X4
 ```
