@@ -3,17 +3,17 @@
 
 This is a PlatformIO-compatible version of the matrixClock project, migrated from Arduino IDE.
 <p align="center">
-<img width="45%"  alt="IMG_0107" src="https://github.com/user-attachments/assets/5e8846ef-ca00-469f-88d9-23f22f367ac9" />
-<img width="45%"  alt="IMG_0108" src="https://github.com/user-attachments/assets/b1306a2d-ab0d-4750-bf5c-1b8e41943e24" />
+<img width="45%"  alt="IMG_14_01" src=images/img_14_01.jpeg />
+<img width="45%"  alt="IMG_14_02" src=images/img_14_02.jpeg />
 </p>  
 <p align="center">
-<img width="45%"  alt="IMG_0113" src="https://github.com/user-attachments/assets/e87198d6-6bbf-4e5a-8db9-b69ce222cbf4" />
-<img width="45%"  alt="IMG_0113" src="https://github.com/user-attachments/assets/6fabb513-ec90-4e7d-99e3-d90884cb1552" />
+<img width="45%"  alt="IMG_14_03" src=images/img_14_03.jpeg />
+<img width="45%"  alt="IMG_14_04" src=images/img_14_04.jpeg />
 </p>
 <p align="center">
-<img width="45%" width="973" height="1521" alt="IMG_1056" src="https://github.com/user-attachments/assets/57023c41-1896-4619-83ea-fded80c524b7" />
-<img width="45%" width="503" height="797" alt="IMG_1058" src="https://github.com/user-attachments/assets/cbf973ea-4cfd-4493-9c2d-716b02540bb4" />
-<img width="45%" width="1645" height="1125" alt="IMG_1060" src="https://github.com/user-attachments/assets/4c9886e8-5fce-4a44-b1b9-b6c184c2226d" />
+<img width="45%" width="973" height="1521" alt="IMG_14_05" src=images/img_14_05.jpg />
+<img width="45%" width="503" height="797" alt="IMG_14_06" src=images/IMG_14_06.png  />
+<img width="45%" width="1645" height="1125" alt="IMG_14_07" src=images/img_14_07.jpg />
 </p>
 
 ## Web-Based Configuration Settings
