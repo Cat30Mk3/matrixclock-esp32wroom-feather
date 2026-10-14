@@ -16,6 +16,17 @@ This is a PlatformIO-compatible version of the matrixClock project, migrated fro
 <img width="45%" width="1645" height="1125" alt="IMG_14_07" src=images/img_14_07.jpg />
 </p>
 
+## Features
+- **LED Matrix Display**: Supports two display panel configurations: 1x4 (4) and 2x8 (16) 8x8 led matrix modules
+- **multiple display formats** vertical and horizontal scrolling, multizone displays, custom characters
+- 2x8 configuration supports double height font
+- **Temperature Monitoring**: Local DS18B20 sensors and remote MQTT temperature data
+- **WiFi & MQTT**: Full MQTT integration for remote sensor data display
+- **Time Management**: battery backedup RTC with timezone support and NTP synchronization
+- **Non-Blocking Operations**: All time-sensitive operations use Ticker for non-blocking execution
+- **ISR Handlers**: Button inputs for **FUTURE** user interaction
+  
+
 ## Web-Based Configuration Settings
 
 The Matrix Clock hosts a web-based configuration site used to set WiFi access, date and time, MQTT options, and other customizations.
@@ -117,15 +128,7 @@ The Matrix Clock hosts a web-based configuration site used to set WiFi access, d
     After exiting the configuration system, the clock returns to normal display mode.
 
    
-## Features
-- **LED Matrix Display**: Supports two display panel configurations: 1x4 (4) and 2x8 (16) 8x8 led matrix modules
-- **multiple display formats** vertical and horizontal scrolling, multizone displays, custom characters
-- 2x8 configuration supports double height font
-- **Temperature Monitoring**: Local DS18B20 sensors and remote MQTT temperature data
-- **WiFi & MQTT**: Full MQTT integration for remote sensor data display
-- **Time Management**: battery backedup RTC with timezone support and NTP synchronization
-- **Non-Blocking Operations**: All time-sensitive operations use Ticker for non-blocking execution
-- **ISR Handlers**: Button inputs for **FUTURE** user interaction
+
 
 ## Project Structure
 
